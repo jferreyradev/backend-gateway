@@ -8,7 +8,7 @@
  *   deno run -A gateway-server.ts
  * 
  * Variables de entorno:
- *   - CONFIG_API_URL: URL del servidor de configuración (requerido)
+ *   - BACKENDS_REGISTRY_URL: URL del servidor de registro de backends (requerido)
  *   - API_KEY: API Key para acceder al KV Storage (requerido)
  *   - ENCRYPTION_KEY: Clave para desencriptar tokens
  *   - PROXY_PORT: Puerto local (solo para ejecución local)
@@ -24,7 +24,7 @@
 
 const CONFIG = {
     port: parseInt(Deno.env.get('PROXY_PORT') || '8080'),
-    configApiUrl: Deno.env.get('CONFIG_API_URL') || '',
+    backendsRegistryUrl: Deno.env.get('BACKENDS_REGISTRY_URL') || '',
     apiKey: Deno.env.get('API_KEY') || '',
     encryptionKey: Deno.env.get('ENCRYPTION_KEY') || 'go-oracle-api-secure-key-2026',
     cacheTTL: parseInt(Deno.env.get('CACHE_TTL_MS') || '30000'), // 30 segundos
@@ -87,7 +87,7 @@ class GatewayServer {
     private async refreshBackends() {
         try {
             console.log('🔄 Actualizando lista de backends...');
-            const url = `${CONFIG.configApiUrl}/kv/backends:*`;
+            const url = `${CONFIG.backendsRegistryUrl}/kv/backends:*`;
             const response = await fetch(url, {
                 headers: {
                     'X-API-Key': CONFIG.apiKey,
@@ -401,10 +401,10 @@ const gateway = new GatewayServer();
 export default {
     fetch: async (req: Request): Promise<Response> => {
         // Validar configuración en cada request (para Deno Deploy)
-        if (!CONFIG.apiKey || !CONFIG.configApiUrl) {
+        if (!CONFIG.apiKey || !CONFIG.backendsRegistryUrl) {
             return new Response(JSON.stringify({
                 error: 'Configuration error',
-                message: 'CONFIG_API_URL and API_KEY environment variables are required',
+                message: 'BACKENDS_REGISTRY_URL and API_KEY environment variables are required',
             }), {
                 status: 500,
                 headers: { 'Content-Type': 'application/json' },
@@ -418,10 +418,10 @@ export default {
 // Inicialización para ejecución local (solo si se ejecuta directamente)
 if (import.meta.main) {
     console.log(`🚀 Gateway Server iniciando en puerto ${CONFIG.port}`);
-    console.log(`📡 Config API: ${CONFIG.configApiUrl}`);
+    console.log(`📡 Backends Registry: ${CONFIG.backendsRegistryUrl}`);
     
-    if (!CONFIG.apiKey || !CONFIG.configApiUrl) {
-        console.error('❌ Error: Se requiere CONFIG_API_URL y API_KEY como variables de entorno');
+    if (!CONFIG.apiKey || !CONFIG.backendsRegistryUrl) {
+        console.error('❌ Error: Se requiere BACKENDS_REGISTRY_URL y API_KEY como variables de entorno');
         Deno.exit(1);
     }
 

@@ -22,7 +22,7 @@ Compatible con Deno Deploy mediante actualización lazy/on-demand.
 #### Ejecución Local
 ```bash
 # Configurar variables de entorno
-export CONFIG_API_URL=http://localhost:8000
+export BACKENDS_REGISTRY_URL=http://localhost:8000
 export API_KEY=test-token-123
 
 # Ejecutar
@@ -40,7 +40,7 @@ deno task proxy:start
 
 1. **Crear proyecto en Deno Deploy**
 2. **Configurar variables de entorno**:
-   - `CONFIG_API_URL`: URL del servidor de configuración
+   - `BACKENDS_REGISTRY_URL`: URL del servidor de registro de backends
    - `API_KEY`: API Key para acceder al KV Storage
    - `ENCRYPTION_KEY`: Clave para desencriptar tokens (opcional)
    - `CACHE_TTL_MS`: TTL del caché en ms (opcional, default: 30000)
@@ -58,10 +58,10 @@ El gateway actualizará automáticamente la lista de backends cada 30 segundos (
 ```bash
 deno run -A register-backend.ts \
   --name=backend-prod \
-  --url=http://10.6.46.114:3013 \
-  --token=secret123 \
+  --backend-url=http://10.6.46.114:3013 \
+  --backend-token=secret123 \
   --prefix=/api/prod \
-  --config=http://localhost:8000 \
+  --registry-url=http://localhost:8000 \
   --api-key=test-token-123
 ```
 
@@ -69,11 +69,11 @@ deno run -A register-backend.ts \
 ```bash
 deno run -A register-backend.ts \
   --name=backend-dev \
-  --port=3000 \
+  --backend-port=3000 \
   --use-public-ip \
-  --token=dev-secret \
+  --backend-token=dev-secret \
   --prefix=/dev \
-  --config=http://localhost:8000 \
+  --registry-url=http://localhost:8000 \
   --api-key=test-token-123
 ```
 
@@ -81,12 +81,13 @@ deno run -A register-backend.ts \
 ```bash
 deno run -A register-backend.ts \
   --name=backend-auto \
-  --url=http://localhost:3000 \
-  --token=token123 \
+  --backend-url=http://localhost:3000 \
+  --backend-token=token123 \
   --prefix=/auto \
-  --config=http://localhost:8000 \
+  --registry-url=http://localhost:8000 \
   --api-key=test-token-123 \
   --daemon
+```
 ---
 
 ## 🌐 Proxy Server

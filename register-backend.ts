@@ -2,15 +2,39 @@
 /**
  * Backend Auto-Registration para KV Storage API
  * 
+ * Registra un backend en el servidor de registro de backends
+ * 
  * Uso:
- *   deno run -A register.ts \
+ *   deno run -A register-backend.ts \
  *     --name=prod \
- *     --url=http://10.6.46.114:3013 \
- *     --token=secret \
+ *     --backend-url=http://10.6.46.114:3013 \
+ *     --backend-token=secret \
  *     --prefix=/prod \
- *     --config=http://localhost:8000 \
+ *     --registry-url=http://localhost:8000 \
  *     --api-key=test-token-123 \
  *     --daemon
+ * 
+ * Argumentos:
+ *   --name: Nombre identificador del backend (requerido)
+ *   --backend-url: URL del backend (requerido, o --use-public-ip)
+ *   --backend-token: Token de autenticación del backend (requerido)
+ *   --prefix: Prefijo de ruta para enrutamiento (requerido)
+ *   --registry-url: URL del servidor de registro de backends (requerido)
+ *   --api-key: API Key para acceder al registro (requerido)
+ *   --backend-port: Puerto local (requerido con --use-public-ip)
+ *   --use-public-ip: Detectar IP pública automáticamente
+ *   --encryption-key: Clave de encriptación para tokens
+ *   --daemon: Ejecutar en modo demonio (re-registra cada 5 minutos)
+ * 
+ * Variables de entorno:
+ *   - BACKEND_NAME: Nombre del backend
+ *   - BACKEND_URL: URL del backend
+ *   - BACKEND_TOKEN: Token de autenticación
+ *   - BACKEND_PREFIX: Prefijo de ruta
+ *   - BACKENDS_REGISTRY_URL: URL del servidor de registro de backends
+ *   - API_KEY: API Key para el registro
+ *   - PORT: Puerto local
+ *   - ENCRYPTION_KEY: Clave para encriptar tokens
  */
 
 function parseArgs(): Record<string, string> {
@@ -28,18 +52,18 @@ const args = parseArgs();
 
 const CONFIG = {
     name: args.name || Deno.env.get('BACKEND_NAME') || '',
-    url: args.url || Deno.env.get('BACKEND_URL') || '',
-    token: args.token || Deno.env.get('BACKEND_TOKEN') || '',
+    backendUrl: args['backend-url'] || Deno.env.get('BACKEND_URL') || '',
+    backendToken: args['backend-token'] || Deno.env.get('BACKEND_TOKEN') || '',
     prefix: args.prefix || Deno.env.get('BACKEND_PREFIX') || '',
-    configApiUrl: args.config || Deno.env.get('CONFIG_API_URL') || '',
+    backendsRegistryUrl: args['registry-url'] || Deno.env.get('BACKENDS_REGISTRY_URL') || '',
     apiKey: args['api-key'] || Deno.env.get('API_KEY') || '',
     usePublicIP: Deno.args.includes('--use-public-ip'),
-    port: args.port || Deno.env.get('PORT') || '',
+    backendPort: args['backend-port'] || Deno.env.get('PORT') || '',
 };
 
 const DAEMON_INTERVAL = 5 * 60 * 1000;
 const isDaemon = Deno.args.includes('--daemon');
-const ENCRYPTION_KEY = args.key || Deno.env.get('ENCRYPTION_KEY') || 'go-oracle-api-secure-key-2026';
+const ENCRYPTION_KEY = args['encryption-key'] || Deno.env.get('ENCRYPTION_KEY') || 'go-oracle-api-secure-key-2026';
 
 interface BackendConfig {
     name: string;
@@ -96,23 +120,23 @@ async function encryptToken(token: string): Promise<string> {
 }
 
 function validateConfig(): void {
-    if (CONFIG.usePublicIP && CONFIG.url) {
-        console.error('❌ Error: No puedes usar --url y --use-public-ip al mismo tiempo');
+    if (CONFIG.usePublicIP && CONFIG.backendUrl) {
+        console.error('❌ Error: No puedes usar --backend-url y --use-public-ip al mismo tiempo');
         Deno.exit(1);
     }
     
     const required = [
         { key: 'name', value: CONFIG.name, flag: '--name' },
-        { key: 'token', value: CONFIG.token, flag: '--token' },
+        { key: 'backendToken', value: CONFIG.backendToken, flag: '--backend-token' },
         { key: 'prefix', value: CONFIG.prefix, flag: '--prefix' },
-        { key: 'configApiUrl', value: CONFIG.configApiUrl, flag: '--config' },
+        { key: 'backendsRegistryUrl', value: CONFIG.backendsRegistryUrl, flag: '--registry-url' },
         { key: 'apiKey', value: CONFIG.apiKey, flag: '--api-key' },
     ];
     
     if (!CONFIG.usePublicIP) {
-        required.push({ key: 'url', value: CONFIG.url, flag: '--url' });
+        required.push({ key: 'backendUrl', value: CONFIG.backendUrl, flag: '--backend-url' });
     } else {
-        required.push({ key: 'port', value: CONFIG.port, flag: '--port' });
+        required.push({ key: 'backendPort', value: CONFIG.backendPort, flag: '--backend-port' });
     }
     
     const missing = required.filter(r => !r.value);
@@ -120,12 +144,12 @@ function validateConfig(): void {
     if (missing.length > 0) {
         console.error(`❌ Faltan: ${missing.map(m => m.flag).join(', ')}`);
         console.error('\n💡 Ejemplo:');
-        console.error('  deno run -A register.ts \\');
+        console.error('  deno run -A register-backend.ts \\');
         console.error('    --name=desarrollo \\');
-        console.error('    --url=http://localhost:3000 \\');
-        console.error('    --token=token123 \\');
+        console.error('    --backend-url=http://localhost:3000 \\');
+        console.error('    --backend-token=token123 \\');
         console.error('    --prefix=/desa \\');
-        console.error('    --config=http://localhost:8000 \\');
+        console.error('    --registry-url=http://localhost:8000 \\');
         console.error('    --api-key=test-token-123');
         Deno.exit(1);
     }
@@ -151,8 +175,8 @@ async function registerBackend(): Promise<boolean> {
     try {
         const publicIP = await getPublicIP();
         const finalURL = CONFIG.usePublicIP 
-            ? buildPublicURL(publicIP, CONFIG.port)
-            : CONFIG.url;
+            ? buildPublicURL(publicIP, CONFIG.backendPort)
+            : CONFIG.backendUrl;
         
         const systemInfo = {
             hostname: Deno.hostname?.() || 'unknown',
@@ -163,7 +187,7 @@ async function registerBackend(): Promise<boolean> {
         };
         const timestamp = new Date().toISOString();
         
-        const encryptedToken = await encryptToken(CONFIG.token);
+        const encryptedToken = await encryptToken(CONFIG.backendToken);
         
         const backendData = {
             name: CONFIG.name,
@@ -184,16 +208,16 @@ async function registerBackend(): Promise<boolean> {
         };
         
         if (CONFIG.usePublicIP) {
-            console.log(`🔄 Registrando "${CONFIG.name}" - IP: ${publicIP}:${CONFIG.port}`);
+            console.log(`🔄 Registrando "${CONFIG.name}" - IP: ${publicIP}:${CONFIG.backendPort}`);
         } else {
-            console.log(`🔄 Registrando "${CONFIG.name}" - URL: ${CONFIG.url}`);
+            console.log(`🔄 Registrando "${CONFIG.name}" - URL: ${CONFIG.backendUrl}`);
         }
         
         console.log(`   Prefix: ${CONFIG.prefix}`);
-        console.log(`   Token: ${CONFIG.token.substring(0, 4)}***`);
-        console.log(`   Config API: ${CONFIG.configApiUrl}`);
+        console.log(`   Token: ${CONFIG.backendToken.substring(0, 4)}***`);
+        console.log(`   Backends Registry: ${CONFIG.backendsRegistryUrl}`);
         
-        const response = await fetch(`${CONFIG.configApiUrl}/collections/backends`, {
+        const response = await fetch(`${CONFIG.backendsRegistryUrl}/collections/backends`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',

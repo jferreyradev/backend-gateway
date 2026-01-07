@@ -9,7 +9,7 @@
 cp .env.example .env
 
 # Editar .env con tus valores
-CONFIG_API_URL=http://localhost:8000
+BACKENDS_REGISTRY_URL=http://localhost:8000
 API_KEY=test-token-123
 ```
 
@@ -18,10 +18,10 @@ API_KEY=test-token-123
 ```bash
 deno run -A register-backend.ts \
   --name=mi-backend \
-  --url=http://localhost:3000 \
-  --token=mi-token-secreto \
+  --backend-url=http://localhost:3000 \
+  --backend-token=mi-token-secreto \
   --prefix=/api \
-  --config=http://localhost:8000 \
+  --registry-url=http://localhost:8000 \
   --api-key=test-token-123
 ```
 
@@ -59,7 +59,7 @@ deno install -A --global jsr:@deno/deployctl
 # Deploy
 deployctl deploy \
   --project=backend-gateway \
-  --env=CONFIG_API_URL=https://tu-api.deno.dev \
+  --env=BACKENDS_REGISTRY_URL=https://tu-api.deno.dev \
   --env=API_KEY=tu-key \
   gateway-server.ts
 ```
