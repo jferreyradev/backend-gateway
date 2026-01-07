@@ -1,0 +1,14 @@
+# Deno
+.deno/
+deno.lock
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
