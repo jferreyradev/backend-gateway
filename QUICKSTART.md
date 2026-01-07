@@ -1,19 +1,20 @@
 # ⚡ Puesta en Marcha Rápida
 
-## 🚀 En 3 Pasos
-
-### 1. Configurar Variables de Entorno
+## 🚀 En 1 Paso
 
 ```bash
-# Copiar template
-cp .env.example .env
-
-# Editar .env con tus valores
-BACKENDS_REGISTRY_URL=http://localhost:8000
-API_KEY=test-token-123
+deno run -A install.ts
 ```
 
-### 2. Registrar un Backend
+Responde las preguntas, reinicia tu equipo y **listo**.
+
+El daemon se ejecutará automáticamente al iniciar.
+
+---
+
+## 📝 Si Prefieres Configurar Manualmente
+
+### 1. Registrar Backend
 
 ```bash
 deno run -A register-backend.ts \
@@ -22,13 +23,14 @@ deno run -A register-backend.ts \
   --backend-token=mi-token-secreto \
   --prefix=/api \
   --registry-url=http://localhost:8000 \
-  --api-key=test-token-123
+  --api-key=test-token-123 \
+  --daemon
 ```
 
-### 3. Iniciar Gateway
+### 2. Iniciar Gateway
 
 ```bash
-deno task gateway:start
+deno run -A gateway-server.ts
 ```
 
 Gateway corriendo en `http://localhost:8080` ✅
@@ -50,23 +52,8 @@ curl http://localhost:8080/api/tu-endpoint
 
 ---
 
-## ☁️ Deploy en Deno Deploy
-
-```bash
-# Instalar deployctl
-deno install -A --global jsr:@deno/deployctl
-
-# Deploy
-deployctl deploy \
-  --project=backend-gateway \
-  --env=BACKENDS_REGISTRY_URL=https://tu-api.deno.dev \
-  --env=API_KEY=tu-key \
-  gateway-server.ts
-```
-
----
-
 ## 📚 Más Info
 
 - [README.md](README.md) - Documentación completa
 - [.env.example](.env.example) - Variables disponibles
+
