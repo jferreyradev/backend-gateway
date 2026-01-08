@@ -216,7 +216,8 @@ async function registerBackend(): Promise<boolean> {
         console.log(`   Token: ${CONFIG.backendToken.substring(0, 4)}***`);
         console.log(`   Backends Registry: ${CONFIG.backendsRegistryUrl}`);
         
-        const response = await fetch(`${CONFIG.backendsRegistryUrl}/collections/backends/${CONFIG.name}`, {
+        // Intentar PUT (actualizar si existe)
+        let response = await fetch(`${CONFIG.backendsRegistryUrl}/collections/backends/${CONFIG.name}`, {
             method: 'PUT',
             headers: { 
                 'Content-Type': 'application/json',
@@ -224,6 +225,20 @@ async function registerBackend(): Promise<boolean> {
             },
             body: JSON.stringify(kvPayload),
         });
+        
+        // Si no existe (404), crear con POST
+        if (response.status === 404) {
+            console.log(`   ℹ️  Backend no existe, creando nuevo...`);
+            response = await fetch(`${CONFIG.backendsRegistryUrl}/collections/backends`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${CONFIG.apiKey}`,
+                    'X-Item-Key': CONFIG.name,
+                },
+                body: JSON.stringify(kvPayload),
+            });
+        }
         
         if (!response.ok) {
             console.error(`❌ Error registrando: ${response.status} ${response.statusText}`);
