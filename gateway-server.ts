@@ -88,6 +88,8 @@ class GatewayServer {
         try {
             console.log('🔄 Actualizando lista de backends...');
             const url = `${CONFIG.backendsRegistryUrl}/kv/backends:*`;
+            console.log(`📡 Conectando a: ${url}`);
+            
             const response = await fetch(url, {
                 headers: {
                     'X-API-Key': CONFIG.apiKey,
@@ -96,11 +98,15 @@ class GatewayServer {
             });
 
             if (!response.ok) {
-                console.error(`❌ Error obteniendo backends: ${response.status}`);
+                console.error(`❌ Error obteniendo backends: ${response.status} ${response.statusText}`);
+                const text = await response.text();
+                console.error(`   Respuesta: ${text.substring(0, 200)}`);
                 return;
             }
 
             const data = await response.json();
+            console.log(`✅ Datos recibidos:`, Object.keys(data).length, 'claves');
+            
             const newBackends = new Map<string, BackendStatus>();
             const newRoutingTable = new Map<string, string[]>();
 
@@ -108,6 +114,7 @@ class GatewayServer {
                 if (key.startsWith('backends:')) {
                     const backendName = key.replace('backends:', '');
                     const config = value as BackendConfig;
+                    console.log(`   ✅ Backend cargado: ${backendName}`);
 
                     // Desencriptar token
                     const decryptedToken = await this.decryptToken(config.token);
@@ -312,11 +319,16 @@ class GatewayServer {
                 prefix: backend.config.prefix,
                 normalized_prefix: this.normalizePrefix(backend.config.prefix),
                 healthy: backend.healthy,
-                lastCheck: new Date(backend.lastCheck).toISOString(),
+                lastCheck: backend.lastCheck > 0 ? new Date(backend.lastCheck).toISOString() : 'never',
                 consecutiveFailures: backend.consecutiveFailures,
             }));
 
-            return new Response(JSON.stringify(status, null, 2), {
+            return new Response(JSON.stringify({
+                total: this.backends.size,
+                healthy: Array.from(this.backends.values()).filter(b => b.healthy).length,
+                backends: status,
+                cacheAge: Date.now() - this.lastRefresh,
+            }, null, 2), {
                 headers: { 'Content-Type': 'application/json' },
             });
         }
