@@ -425,7 +425,7 @@ if (import.meta.main) {
         Deno.exit(1);
     }
 
-    const server = Deno.serve({
+    Deno.serve({
         port: CONFIG.port,
         onListen: ({ port, hostname }) => {
             console.log(`✅ Gateway Server ejecutándose en http://${hostname}:${port}`);
@@ -435,3 +435,4 @@ if (import.meta.main) {
             console.log(`   - http://${hostname}:${port}/gateway/routing\n`);
         },
     }, (req) => gateway.handleRequest(req));
+}
