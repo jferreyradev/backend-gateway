@@ -105,13 +105,16 @@ class GatewayServer {
             }
 
             const data = await response.json();
-            console.log(`✅ Datos recibidos:`, Object.keys(data).length, 'claves');
+            
+            // La API puede devolver un array o un objeto
+            const items = Array.isArray(data) ? data : Object.values(data);
+            console.log(`✅ Datos recibidos:`, items.length, 'backends');
             
             const newBackends = new Map<string, BackendStatus>();
             const newRoutingTable = new Map<string, string[]>();
 
             // El servicio retorna items con estructura: { key: "nombre", data: {...}, metadata: {...} }
-            for (const item of data as Array<{ key: string; data: BackendConfig }>) {
+            for (const item of items as Array<{ key: string; data: BackendConfig }>) {
                 const backendName = item.key;
                 const config = item.data;
                 console.log(`   ✅ Backend cargado: ${backendName}`);
@@ -263,7 +266,12 @@ class GatewayServer {
         let matchedBackends: string[] = [];
 
         for (const [prefix, backends] of this.routingTable.entries()) {
-            if (path.startsWith(prefix) && prefix.length > bestMatch.length) {
+            // Match exacto del prefix o seguido de /
+            const prefixMatch = prefix === '/' 
+                ? true 
+                : path === prefix || path.startsWith(prefix + '/');
+            
+            if (prefixMatch && prefix.length > bestMatch.length) {
                 bestMatch = prefix;
                 matchedBackends = backends;
             }
