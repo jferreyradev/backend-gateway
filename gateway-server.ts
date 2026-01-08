@@ -482,24 +482,15 @@ async function handleRequest(req: Request): Promise<Response> {
     return gateway.handleRequest(req);
 }
 
-// Inicialización para ejecución local (solo si se ejecuta directamente)
+// Inicialización para ejecución local
 if (import.meta.main) {
-    console.log(`🚀 Gateway Server iniciando en puerto ${CONFIG.port}`);
+    console.log(`🚀 Gateway Server`);
     console.log(`📡 Backends Registry: ${CONFIG.backendsRegistryUrl}`);
-
-    Deno.serve({
-        port: CONFIG.port,
-        onListen: ({ port, hostname }) => {
-            console.log(`✅ Gateway Server ejecutándose en http://${hostname}:${port}`);
-            console.log(`\n📊 Endpoints de monitoreo:`);
-            console.log(`   - http://${hostname}:${port}/gateway/health`);
-            console.log(`   - http://${hostname}:${port}/gateway/status`);
-            console.log(`   - http://${hostname}:${port}/gateway/routing\n`);
-        },
-    }, handleRequest);
+    console.log(`📝 Usa: deno serve --allow-net --allow-env gateway-server.ts`);
+    console.log(`🌐 O despliega en Deno Deploy\n`);
 }
 
-// Handler para Deno Deploy (exportado por defecto)
+// Handler para Deno Deploy y ejecución local con `deno serve`
 export default {
     fetch: handleRequest,
 };
