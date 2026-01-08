@@ -196,9 +196,8 @@ async function registerBackend(): Promise<boolean> {
             prefix: CONFIG.prefix,
         };
         
-        // Formato KV Storage API
+        // Formato KV Storage API - cada backend es una entrada con su nombre como key
         const kvPayload = {
-            key: CONFIG.name,
             data: backendData,
             metadata: {
                 registeredAt: timestamp,
@@ -217,8 +216,8 @@ async function registerBackend(): Promise<boolean> {
         console.log(`   Token: ${CONFIG.backendToken.substring(0, 4)}***`);
         console.log(`   Backends Registry: ${CONFIG.backendsRegistryUrl}`);
         
-        const response = await fetch(`${CONFIG.backendsRegistryUrl}/collections/backends`, {
-            method: 'POST',
+        const response = await fetch(`${CONFIG.backendsRegistryUrl}/collections/backends/${CONFIG.name}`, {
+            method: 'PUT',
             headers: { 
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${CONFIG.apiKey}`,

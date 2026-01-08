@@ -87,12 +87,12 @@ class GatewayServer {
     private async refreshBackends() {
         try {
             console.log('🔄 Actualizando lista de backends...');
-            const url = `${CONFIG.backendsRegistryUrl}/kv/backends:*`;
+            const url = `${CONFIG.backendsRegistryUrl}/collections/backends`;
             console.log(`📡 Conectando a: ${url}`);
             
             const response = await fetch(url, {
                 headers: {
-                    'X-API-Key': CONFIG.apiKey,
+                    'Authorization': `Bearer ${CONFIG.apiKey}`,
                     'Content-Type': 'application/json',
                 },
             });
@@ -110,31 +110,30 @@ class GatewayServer {
             const newBackends = new Map<string, BackendStatus>();
             const newRoutingTable = new Map<string, string[]>();
 
-            for (const [key, value] of Object.entries(data)) {
-                if (key.startsWith('backends:')) {
-                    const backendName = key.replace('backends:', '');
-                    const config = value as BackendConfig;
-                    console.log(`   ✅ Backend cargado: ${backendName}`);
+            // El servicio retorna items con estructura: { key: "nombre", data: {...}, metadata: {...} }
+            for (const item of data as Array<{ key: string; data: BackendConfig }>) {
+                const backendName = item.key;
+                const config = item.data;
+                console.log(`   ✅ Backend cargado: ${backendName}`);
 
-                    // Desencriptar token
-                    const decryptedToken = await this.decryptToken(config.token);
+                // Desencriptar token
+                const decryptedToken = await this.decryptToken(config.token);
 
-                    const existingStatus = this.backends.get(backendName);
-                    newBackends.set(backendName, {
-                        config,
-                        healthy: existingStatus?.healthy ?? true,
-                        lastCheck: existingStatus?.lastCheck ?? 0,
-                        consecutiveFailures: existingStatus?.consecutiveFailures ?? 0,
-                        decryptedToken,
-                    });
+                const existingStatus = this.backends.get(backendName);
+                newBackends.set(backendName, {
+                    config,
+                    healthy: existingStatus?.healthy ?? true,
+                    lastCheck: existingStatus?.lastCheck ?? 0,
+                    consecutiveFailures: existingStatus?.consecutiveFailures ?? 0,
+                    decryptedToken,
+                });
 
-                    // Actualizar tabla de enrutamiento
-                    const prefix = this.normalizePrefix(config.prefix || '/');
-                    if (!newRoutingTable.has(prefix)) {
-                        newRoutingTable.set(prefix, []);
-                    }
-                    newRoutingTable.get(prefix)!.push(backendName);
+                // Actualizar tabla de enrutamiento
+                const prefix = this.normalizePrefix(config.prefix || '/');
+                if (!newRoutingTable.has(prefix)) {
+                    newRoutingTable.set(prefix, []);
                 }
+                newRoutingTable.get(prefix)!.push(backendName);
             }
 
             this.backends = newBackends;

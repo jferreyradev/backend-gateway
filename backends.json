@@ -1,0 +1,20 @@
+{
+  "key": "Desarrollo",
+  "data": {
+    "name": "Desarrollo",
+    "url": "http://localhost:3000",
+    "token": "OsCzOqAdoKWtUCNTYpt+3VFnjePs9Y+YC9S5MdOfAY4UL8eKFvNOceLomcHmR5/TAZH9s2qGGmr1",
+    "prefix": "/api/desa"
+  },
+  "metadata": {
+    "registeredAt": "2026-01-08T01:41:49.927Z",
+    "lastUpdate": "2026-01-08T01:41:49.927Z",
+    "system": {
+      "hostname": "delldev",
+      "os": "windows",
+      "arch": "x86_64",
+      "denoVersion": "2.6.1",
+      "publicIP": "181.87.30.19"
+    }
+  }
+}
