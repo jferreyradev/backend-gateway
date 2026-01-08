@@ -70,11 +70,12 @@ interface BackendConfig {
     url: string;
     token: string;
     prefix: string;
-    metadata?: {
-        registeredAt: string;
-        lastUpdate: string;
-        system: { hostname: string; os: string; arch: string; denoVersion: string; publicIP: string };
-    };
+}
+
+interface BackendMetadata {
+    registeredAt: string;
+    lastUpdate: string;
+    system: { hostname: string; os: string; arch: string; denoVersion: string; publicIP: string };
 }
 
 // Funciones de encriptación

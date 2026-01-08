@@ -36,16 +36,17 @@ interface BackendConfig {
     url: string;
     token: string;
     prefix: string;
-    metadata?: {
-        registeredAt: string;
-        lastUpdate: string;
-        system: {
-            hostname: string;
-            os: string;
-            arch: string;
-            denoVersion: string;
-            publicIP: string;
-        };
+}
+
+interface BackendMetadata {
+    registeredAt: string;
+    lastUpdate: string;
+    system: {
+        hostname: string;
+        os: string;
+        arch: string;
+        denoVersion: string;
+        publicIP: string;
     };
 }
 
@@ -114,29 +115,50 @@ class GatewayServer {
             const newRoutingTable = new Map<string, string[]>();
 
             // El servicio retorna items con estructura: { key: "nombre", data: {...}, metadata: {...} }
-            for (const item of items as Array<{ key: string; data: BackendConfig }>) {
-                const backendName = item.key;
-                const config = item.data;
-                console.log(`   ✅ Backend cargado: ${backendName}`);
+            for (const item of items as Array<{ key: string; data: BackendConfig; metadata?: BackendMetadata }>) {
+                try {
+                    if (!item || !item.key) {
+                        console.warn('⚠️  Item sin key, saltando:', item);
+                        continue;
+                    }
+                    
+                    const backendName = item.key;
+                    const config = item.data;
+                    
+                    if (!config) {
+                        console.warn(`⚠️  Backend ${backendName} sin data, saltando`);
+                        continue;
+                    }
+                    
+                    if (!config.token || !config.url || !config.prefix) {
+                        console.warn(`⚠️  Backend ${backendName} con datos incompletos:`, config);
+                        continue;
+                    }
+                    
+                    console.log(`   ✅ Backend cargado: ${backendName}`);
 
-                // Desencriptar token
-                const decryptedToken = await this.decryptToken(config.token);
+                    // Desencriptar token
+                    const decryptedToken = await this.decryptToken(config.token);
 
-                const existingStatus = this.backends.get(backendName);
-                newBackends.set(backendName, {
-                    config,
-                    healthy: existingStatus?.healthy ?? true,
-                    lastCheck: existingStatus?.lastCheck ?? 0,
-                    consecutiveFailures: existingStatus?.consecutiveFailures ?? 0,
-                    decryptedToken,
-                });
+                    const existingStatus = this.backends.get(backendName);
+                    newBackends.set(backendName, {
+                        config,
+                        healthy: existingStatus?.healthy ?? true,
+                        lastCheck: existingStatus?.lastCheck ?? 0,
+                        consecutiveFailures: existingStatus?.consecutiveFailures ?? 0,
+                        decryptedToken,
+                    });
 
-                // Actualizar tabla de enrutamiento
-                const prefix = this.normalizePrefix(config.prefix || '/');
-                if (!newRoutingTable.has(prefix)) {
-                    newRoutingTable.set(prefix, []);
+                    // Actualizar tabla de enrutamiento
+                    const prefix = this.normalizePrefix(config.prefix || '/');
+                    if (!newRoutingTable.has(prefix)) {
+                        newRoutingTable.set(prefix, []);
+                    }
+                    newRoutingTable.get(prefix)!.push(backendName);
+                } catch (error) {
+                    console.error(`❌ Error procesando backend:`, error);
+                    console.error(`   Item:`, item);
                 }
-                newRoutingTable.get(prefix)!.push(backendName);
             }
 
             this.backends = newBackends;
