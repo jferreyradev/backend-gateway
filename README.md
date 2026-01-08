@@ -13,16 +13,6 @@ Sistema de registro y enrutamiento automático de backends.
 
 ## 🚀 Inicio Rápido
 
-### 1. Instalación Automática
-
-```bash
-deno run -A install.ts
-```
-
-Responde las preguntas, reinicia y **listo**.
-
-### 2. Uso Manual
-
 **Registrar backend:**
 ```bash
 deno run -A register-backend.ts \

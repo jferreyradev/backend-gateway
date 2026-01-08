@@ -1,35 +1,27 @@
 # ⚡ Puesta en Marcha Rápida
 
-## 🚀 En 1 Paso
-
-```bash
-deno run -A install.ts
-```
-
-Responde las preguntas, reinicia tu equipo y **listo**.
-
-El daemon se ejecutará automáticamente al iniciar.
-
----
-
-## 📝 Si Prefieres Configurar Manualmente
-
-### 1. Registrar Backend
+## 🚀 Registrar un Backend
 
 ```bash
 deno run -A register-backend.ts \
   --name=mi-backend \
   --backend-url=http://localhost:3000 \
-  --backend-token=mi-token-secreto \
+  --backend-token=token-secreto \
   --prefix=/api \
   --registry-url=http://localhost:8000 \
   --api-key=test-token-123 \
   --daemon
 ```
 
-### 2. Iniciar Gateway
+El backend se registrará automáticamente cada 5 minutos.
+
+---
+
+## 🚀 Ejecutar el Gateway
 
 ```bash
+BACKENDS_REGISTRY_URL=http://localhost:8000 \
+API_KEY=test-token-123 \
 deno run -A gateway-server.ts
 ```
 
@@ -52,8 +44,28 @@ curl http://localhost:8080/api/tu-endpoint
 
 ---
 
+## 📝 Opciones de register-backend.ts
+
+**Requeridos:**
+- `--name` - Nombre del backend
+- `--backend-token` - Token de autenticación
+- `--prefix` - Prefijo de ruta
+- `--registry-url` - URL del servidor de registro
+- `--api-key` - API Key del registro
+
+**Una de estas (URL fija o IP pública):**
+- `--backend-url` - URL del backend
+- `--backend-port` + `--use-public-ip` - Detectar IP automáticamente
+
+**Opcionales:**
+- `--encryption-key` - Clave de encriptación
+- `--daemon` - Modo automático (sin daemon, se ejecuta una sola vez)
+
+---
+
 ## 📚 Más Info
 
 - [README.md](README.md) - Documentación completa
 - [.env.example](.env.example) - Variables disponibles
+
 
