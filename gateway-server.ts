@@ -87,7 +87,7 @@ class GatewayServer {
     private async refreshBackends() {
         try {
             console.log('🔄 Actualizando lista de backends...');
-            const url = `${CONFIG.backendsRegistryUrl}/collections/backends`;
+            const url = `${CONFIG.backendsRegistryUrl}/collections/backend`;
             console.log(`📡 Conectando a: ${url}`);
             
             const response = await fetch(url, {
