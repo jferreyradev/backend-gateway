@@ -422,7 +422,7 @@ if (import.meta.main) {
     
     if (!CONFIG.apiKey || !CONFIG.backendsRegistryUrl) {
         console.error('❌ Error: Se requiere BACKENDS_REGISTRY_URL y API_KEY como variables de entorno');
-        Deno.exit(1);
+        throw new Error('Missing required environment variables: BACKENDS_REGISTRY_URL and/or API_KEY');
     }
 
     Deno.serve({
