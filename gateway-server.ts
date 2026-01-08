@@ -306,6 +306,24 @@ class GatewayServer {
 
         const url = new URL(req.url);
 
+        // Página de inicio con información del gateway
+        if (url.pathname === '/' || url.pathname === '/gateway' || url.pathname === '/proxy') {
+            return new Response(JSON.stringify({
+                service: 'Backend Gateway',
+                version: '1.0.0',
+                backends: this.backends.size,
+                healthy: Array.from(this.backends.values()).filter(b => b.healthy).length,
+                endpoints: {
+                    health: '/gateway/health',
+                    status: '/gateway/status',
+                    routing: '/gateway/routing',
+                },
+                cacheAge: Date.now() - this.lastRefresh,
+            }, null, 2), {
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
         // Health check del proxy
         if (url.pathname === '/proxy/health' || url.pathname === '/gateway/health') {
             return new Response(JSON.stringify({
