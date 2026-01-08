@@ -417,13 +417,14 @@ export default {
 
 // Inicialización para ejecución local (solo si se ejecuta directamente)
 if (import.meta.main) {
-    console.log(`🚀 Gateway Server iniciando en puerto ${CONFIG.port}`);
-    console.log(`📡 Backends Registry: ${CONFIG.backendsRegistryUrl}`);
-    
+    // Solo validar en modo local
     if (!CONFIG.apiKey || !CONFIG.backendsRegistryUrl) {
         console.error('❌ Error: Se requiere BACKENDS_REGISTRY_URL y API_KEY como variables de entorno');
-        throw new Error('Missing required environment variables: BACKENDS_REGISTRY_URL and/or API_KEY');
+        throw new Error('Missing required environment variables');
     }
+    
+    console.log(`🚀 Gateway Server iniciando en puerto ${CONFIG.port}`);
+    console.log(`📡 Backends Registry: ${CONFIG.backendsRegistryUrl}`);
 
     Deno.serve({
         port: CONFIG.port,
