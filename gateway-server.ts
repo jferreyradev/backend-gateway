@@ -456,32 +456,24 @@ class GatewayServer {
 // Instancia global del gateway
 const gateway = new GatewayServer();
 
-// Handler para Deno Deploy (exportado por defecto)
-export default {
-    fetch: async (req: Request): Promise<Response> => {
-        // Validar configuración en cada request (para Deno Deploy)
-        if (!CONFIG.apiKey || !CONFIG.backendsRegistryUrl) {
-            return new Response(JSON.stringify({
-                error: 'Configuration error',
-                message: 'BACKENDS_REGISTRY_URL and API_KEY environment variables are required',
-            }), {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' },
-            });
-        }
+// Handler principal que valida configuración
+async function handleRequest(req: Request): Promise<Response> {
+    // Validar configuración
+    if (!CONFIG.apiKey || !CONFIG.backendsRegistryUrl) {
+        return new Response(JSON.stringify({
+            error: 'Configuration error',
+            message: 'BACKENDS_REGISTRY_URL and API_KEY environment variables are required',
+        }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    }
 
-        return gateway.handleRequest(req);
-    },
-};
+    return gateway.handleRequest(req);
+}
 
 // Inicialización para ejecución local (solo si se ejecuta directamente)
 if (import.meta.main) {
-    // Solo validar en modo local
-    if (!CONFIG.apiKey || !CONFIG.backendsRegistryUrl) {
-        console.error('❌ Error: Se requiere BACKENDS_REGISTRY_URL y API_KEY como variables de entorno');
-        throw new Error('Missing required environment variables');
-    }
-    
     console.log(`🚀 Gateway Server iniciando en puerto ${CONFIG.port}`);
     console.log(`📡 Backends Registry: ${CONFIG.backendsRegistryUrl}`);
 
@@ -494,5 +486,10 @@ if (import.meta.main) {
             console.log(`   - http://${hostname}:${port}/gateway/status`);
             console.log(`   - http://${hostname}:${port}/gateway/routing\n`);
         },
-    }, (req) => gateway.handleRequest(req));
+    }, handleRequest);
 }
+
+// Handler para Deno Deploy (exportado por defecto)
+export default {
+    fetch: handleRequest,
+};
