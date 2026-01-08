@@ -107,9 +107,12 @@ class GatewayServer {
 
             const data = await response.json();
             
+            console.log('📦 Datos raw recibidos:', JSON.stringify(data).substring(0, 500));
+            
             // La API puede devolver un array o un objeto
             const items = Array.isArray(data) ? data : Object.values(data);
-            console.log(`✅ Datos recibidos:`, items.length, 'backends');
+            console.log(`✅ Items a procesar:`, items.length, 'backends');
+            console.log('📦 Primer item:', JSON.stringify(items[0]));
             
             const newBackends = new Map<string, BackendStatus>();
             const newRoutingTable = new Map<string, string[]>();
@@ -382,13 +385,20 @@ class GatewayServer {
 
         // Routing table
         if (url.pathname === '/proxy/routing' || url.pathname === '/gateway/routing') {
+            console.log('📍 Routing table size:', this.routingTable.size);
+            console.log('📍 Backends size:', this.backends.size);
+            
             const routing = Array.from(this.routingTable.entries()).map(([prefix, backends]) => ({
                 prefix,
                 backends,
                 example: `${url.protocol}//${url.host}${prefix}/example`,
             }));
 
-            return new Response(JSON.stringify(routing, null, 2), {
+            return new Response(JSON.stringify({
+                total: routing.length,
+                backends: this.backends.size,
+                routes: routing,
+            }, null, 2), {
                 headers: { 'Content-Type': 'application/json' },
             });
         }
