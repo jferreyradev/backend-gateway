@@ -1,51 +1,155 @@
-# 🌐 Backend Gateway
+# 🌐 Backend Gateway (Simplificado + Seguro)
 
-Sistema de registro y enrutamiento automático de backends.
+Gateway minimalista para enrutamiento automático de backends con **Deno**.
 
 **Características:**
-- ✅ Encriptación de tokens
-- ✅ Balanceo de carga (round-robin)
-- ✅ Health checks automáticos
-- ✅ Caché inteligente
+- ✅ Enrutamiento por prefijos
+- ✅ Balanceo de carga round-robin
+- ✅ Caché inteligente (30s TTL)
 - ✅ Compatible con Deno Deploy
+- ✅ Encriptación de tokens
+- 🔐 Autenticación con tokens Bearer temporales
+
+---
+
+## � Estructura del Proyecto
+
+```
+backend-gateway/
+├── src/                    # Código fuente
+│   ├── gateway-server.ts   # Gateway principal
+│   └── registry-server.ts  # Servidor de registro local
+├── scripts/                # Scripts y utilidades
+│   ├── register-backend.ts # CLI para registrar backends
+│   ├── test-general.ts     # Test completo del sistema
+│   ├── test-auth.ts        # Test de autenticación
+│   ├── test-kv.ts          # Test del KV storage
+│   └── check-backends.ts   # Verificar backends
+├── docs/                   # Documentación
+│   ├── AUTHENTICATION.md   # Guía de autenticación
+│   ├── DEPLOY_DENO.md      # Deploy en Deno Deploy
+│   └── QUICKSTART.md       # Inicio rápido
+├── backends.json           # Datos para servidor local
+├── deno.json               # Configuración de Deno
+└── README.md               # Este archivo
+```
 
 ---
 
 ## 🚀 Inicio Rápido
 
-**Registrar backend:**
+### 1. Iniciar el Gateway
+
 ```bash
-deno run -A register-backend.ts \
-  --name=mi-backend \
-  --backend-url=http://localhost:3000 \
-  --backend-token=token-secreto \
-  --prefix=/api \
-  --registry-url=http://localhost:8000 \
-  --api-key=test-token-123 \
-  --daemon
+# Configurar variables de entorno
+$env:BACKENDS_REGISTRY_URL="https://kv-storage-api.deno.dev"
+$env:API_KEY="tu-api-key"
+$env:GATEWAY_USERNAME="admin"
+$env:GATEWAY_PASSWORD="tu-password-seguro"
+
+# Iniciar gateway
+deno task dev
 ```
 
-**Ejecutar gateway:**
+### 2. Autenticarse
+
 ```bash
-BACKENDS_REGISTRY_URL=http://localhost:8000 \
-API_KEY=test-token-123 \
-deno run -A gateway-server.ts
+# Obtener token
+curl -X POST http://localhost:8000/gateway/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"tu-password-seguro"}'
+
+# Respuesta:
+# {"token":"ABC123...","expiresIn":3600,"tokenType":"Bearer"}
+```
+
+### 3. Usar el Gateway
+
+```bash
+# Ver status (requiere token)
+curl http://localhost:8000/gateway/status \
+  -H "Authorization: Bearer ABC123..."
+
+# Proxy a backend (requiere token)
+curl http://localhost:8000/api/endpoint \
+  -H "Authorization: Bearer ABC123..."
+
+# Logout cuando termines
+curl -X POST http://localhost:8000/gateway/logout \
+  -H "Authorization: Bearer ABC123..."
 ```
 
 ---
 
-## 📊 Probar
+## 🧪 Testing
 
+**IMPORTANTE**: Debes tener el gateway corriendo en una terminal antes de ejecutar los tests.
+
+### Iniciar el Gateway (Terminal 1)
 ```bash
-# Health check
-curl http://localhost:8080/gateway/health
-
-# Ver backends registrados
-curl http://localhost:8080/gateway/status
-
-# Probar ruta
-curl http://localhost:8080/api/endpoint
+deno task dev
 ```
+
+### Ejecutar Tests (Terminal 2)
+
+#### Test Simple (Rápido - 3 pruebas)
+```bash
+deno task test:simple
+```
+
+#### Test Completo (13 pruebas)
+```bash
+deno task test
+```
+
+#### Tests Individuales
+```bash
+# Test de autenticación
+deno task test:auth
+
+# Test de KV storage
+deno task test:kv
+
+# Verificar backends registrados
+deno task check
+```
+
+Ver [docs/TESTING.md](docs/TESTING.md) para guía completa de testing.
+
+---
+
+## 🔐 Autenticación
+
+El gateway requiere tokens Bearer para todas las operaciones excepto:
+- `POST /gateway/login` - Obtener token
+- `GET /gateway/health` - Health check público
+
+**Gestión de sesiones:**
+- `POST /gateway/logout` - Revocar token y cerrar sesión
+
+Ver [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md) para detalles completos.
+
+---
+
+## 🌍 Deploy en Deno Deploy
+
+1. Push a GitHub
+2. Conecta tu repo en [dash.deno.com](https://dash.deno.com)
+3. Configura variables:
+   - `BACKENDS_REGISTRY_URL`
+   - `API_KEY`
+4. Deploy automático ✅
+
+---
+
+## 📊 Endpoints
+
+- `GET /gateway/health` - Health check
+- `GET /gateway/status` - Estado de backends
+- `GET /gateway/routing` - Tabla de rutas
+- `/{prefix}/*` - Proxy a backends
+
+---
 
 ---
 

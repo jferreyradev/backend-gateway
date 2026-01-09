@@ -1,12 +1,15 @@
 {
   "tasks": {
-    "register": "deno run -A register-backend.ts",
-    "register:dev": "deno run -A register-backend.ts --name=dev --url=http://localhost:3000 --token=dev123 --prefix=/dev --config=http://localhost:8000 --api-key=test-token-123",
-    "register:daemon": "deno run -A register-backend.ts --daemon",
-    "gateway": "deno run -A gateway-server.ts",
-    "gateway:start": "deno run -A --env gateway-server.ts",
-    "proxy": "deno run -A gateway-server.ts",
-    "proxy:start": "deno run -A --env gateway-server.ts"
+    "dev": "deno serve --allow-net --allow-env src/gateway-server.ts",
+    "start": "deno serve --allow-net --allow-env src/gateway-server.ts",
+    "registry": "deno run -A src/registry-server.ts",
+    "register": "deno run -A scripts/register-backend.ts",
+    "register:user": "deno run -A scripts/register-user.ts",
+    "test": "deno run -A scripts/test-general.ts",
+    "test:simple": "deno run -A scripts/test-simple.ts",
+    "test:auth": "deno run -A scripts/test-auth.ts",
+    "test:kv": "deno run -A scripts/test-kv.ts",
+    "check": "deno run -A scripts/check-backends.ts"
   },
   "fmt": {
     "indentWidth": 4,
