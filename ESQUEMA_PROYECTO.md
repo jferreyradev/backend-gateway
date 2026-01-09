@@ -180,8 +180,8 @@ POST /gateway/logout              # Cerrar sesión
     "prefix": "/api/v1"
   },
   "metadata": {
-    "registeredAt": "2026-01-08T00:00:00Z",
-    "lastUpdate": "2026-01-08T00:00:00Z",
+    "registeredAt": "2025-01-08T00:00:00Z",
+    "lastUpdate": "2025-01-08T00:00:00Z",
     "system": {
       "hostname": "server1",
       "os": "linux",
@@ -339,7 +339,7 @@ BACKENDS_REGISTRY_URL=https://kv-storage-api.deno.dev  # URL del KV Storage
 API_KEY=your-api-key                                    # API Key para acceder al KV
 
 # Opcional - Seguridad
-ENCRYPTION_KEY=go-oracle-api-secure-key-2026           # Clave de encriptación
+ENCRYPTION_KEY=go-oracle-api-secure-key-2025           # Clave de encriptación
 GATEWAY_USERNAME=admin                                  # Usuario del gateway
 GATEWAY_PASSWORD=secure-password                        # Password del gateway
 
@@ -481,7 +481,7 @@ Ejemplo: Authorization: Bearer Q2xhc3NpYyBjcnlwdG8gcmFuZG9t
 ```json
 {
   "status": "healthy",
-  "timestamp": "2026-01-09T12:00:00Z",
+  "timestamp": "2025-01-09T12:00:00Z",
   "uptime": 3600000,
   "version": "1.0.0"
 }
@@ -632,6 +632,6 @@ Para contribuir al proyecto:
 ---
 
 **Versión:** 1.0.0  
-**Última actualización:** Enero 2026  
+**Última actualización:** Enero 2025  
 **Tecnología:** Deno 2.6+  
 **Licencia:** MIT
