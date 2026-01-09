@@ -16,7 +16,7 @@ git push origin main
 4. Conecta tu repositorio
 5. Selecciona el branch `main`
 6. En "Production Branch Settings":
-   - **Main Entrypoint**: `gateway-server.ts`
+   - **Main Entrypoint**: `src/gateway-server.ts` (sin barra inicial)
    - Click en **Deploy**
 
 ### Paso 3: Configurar Variables de Entorno
