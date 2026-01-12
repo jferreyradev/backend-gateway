@@ -155,7 +155,7 @@ Ver [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md) para detalles completos.
 
 ## ⚙️ Variables de Entorno
 
-### Gateway (`gateway-server.ts`)
+### Gateway (`simple-gateway.ts`)
 - `BACKENDS_REGISTRY_URL` - URL del servidor de registro (requerido)
 - `API_KEY` - API Key del registro (requerido)
 - `ENCRYPTION_KEY` - Clave para desencriptar (opcional)
@@ -210,7 +210,7 @@ GET /api/v2/posts  →  Backend con prefix /api/v2 (si existe)
 
 ```
 backend-gateway/
-├── gateway-server.ts      # Servidor de proxy/gateway
+├── simple-gateway.ts      # Servidor de proxy/gateway
 ├── register-backend.ts    # Cliente de registro
 ├── install.ts            # Instalador automático
 ├── deno.json             # Configuración
@@ -221,7 +221,7 @@ backend-gateway/
 
 ```bash
 # Gateway
-deno run -A gateway-server.ts
+deno run -A simple-gateway.ts
 
 # Register (otra terminal)
 deno run -A register-backend.ts --name=test --backend-url=http://localhost:3000 --backend-token=test --prefix=/test --registry-url=http://localhost:8000 --api-key=test

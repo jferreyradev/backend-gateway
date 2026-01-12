@@ -1,0 +1,10 @@
+{
+  "admin": {
+    "key": "admin",
+    "data": {
+      "username": "admin",
+      "passwordHash": "JAvlGPq9JyTdtvBO6x2llnRI1+gxwIyPqCKAn3THIKk=",
+      "roles": ["admin"]
+    }
+  }
+}

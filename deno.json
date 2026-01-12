@@ -1,7 +1,7 @@
 {
   "tasks": {
-    "dev": "deno serve --allow-net --allow-env src/gateway-server.ts",
-    "start": "deno serve --allow-net --allow-env src/gateway-server.ts",
+    "dev": "deno serve --allow-net --allow-env src/simple-gateway.ts",
+    "start": "deno serve --allow-net --allow-env src/simple-gateway.ts",
     "registry": "deno run -A src/registry-server.ts",
     "register": "deno run -A scripts/register-backend.ts",
     "register:user": "deno run -A scripts/register-user.ts",

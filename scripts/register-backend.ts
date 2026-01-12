@@ -216,18 +216,34 @@ async function registerBackend(): Promise<boolean> {
         console.log(`   Token: ${CONFIG.backendToken.substring(0, 4)}***`);
         console.log(`   Backends Registry: ${CONFIG.backendsRegistryUrl}`);
         
-        // Intentar PUT (actualizar si existe)
-        let response = await fetch(`${CONFIG.backendsRegistryUrl}/collections/backend/${CONFIG.name}`, {
-            method: 'PUT',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${CONFIG.apiKey}`,
-            },
-            body: JSON.stringify(kvPayload),
-        });
+        // Intentar GET primero para ver si existe
+        let existsResponse;
+        try {
+            existsResponse = await fetch(`${CONFIG.backendsRegistryUrl}/collections/backend/${CONFIG.name}`, {
+                method: 'GET',
+                headers: { 
+                    'Authorization': `Bearer ${CONFIG.apiKey}`,
+                },
+            });
+        } catch {
+            existsResponse = { ok: false, status: 404 } as Response;
+        }
         
-        // Si no existe (404), crear con POST
-        if (response.status === 404) {
+        let response;
+        
+        // Si existe (200), actualizar con PUT
+        if (existsResponse.ok) {
+            console.log(`   ℹ️  Backend existe, actualizando...`);
+            response = await fetch(`${CONFIG.backendsRegistryUrl}/collections/backend/${CONFIG.name}`, {
+                method: 'PUT',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${CONFIG.apiKey}`,
+                },
+                body: JSON.stringify(kvPayload),
+            });
+        } else {
+            // Si no existe (404), crear con POST
             console.log(`   ℹ️  Backend no existe, creando nuevo...`);
             response = await fetch(`${CONFIG.backendsRegistryUrl}/collections/backend`, {
                 method: 'POST',
