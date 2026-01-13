@@ -15,10 +15,11 @@
  */
 
 const PORT = parseInt(Deno.env.get('PORT') || '8080');
-const BACKENDS_REGISTRY_URL = Deno.env.get('BACKENDS_REGISTRY_URL') || 'http://localhost:8001';
+const BACKENDS_REGISTRY_URL = Deno.env.get('BACKENDS_REGISTRY_URL') || 'https://kv-storage-api.deno.dev';
 const API_KEY = Deno.env.get('API_KEY') || 'desarrollo-api-key-2026';
 const CACHE_TTL = parseInt(Deno.env.get('CACHE_TTL_MS') || '30000');
 const TOKEN_TTL = parseInt(Deno.env.get('TOKEN_TTL_MS') || '3600000'); // 1 hora
+const ENCRYPTION_KEY = Deno.env.get('ENCRYPTION_KEY') || 'go-oracle-api-secure-key-2026';
 
 interface Backend {
     name: string;
@@ -37,6 +38,62 @@ class SimpleGateway {
     private backends: Map<string, Backend> = new Map();
     private lastRefresh = 0;
     private tokens: Map<string, AuthToken> = new Map();
+
+    private async decryptToken(encryptedToken: string): Promise<string> {
+        try {
+            const encoder = new TextEncoder();
+            const decoder = new TextDecoder();
+            
+            // Decodificar de base64
+            const encryptedData = Uint8Array.from(atob(encryptedToken), c => c.charCodeAt(0));
+            
+            // Validar longitud mínima (salt + iv = 28 bytes)
+            if (encryptedData.length < 28) {
+                console.warn('⚠️  Token muy corto, usando sin desencriptar');
+                return encryptedToken;
+            }
+            
+            // Extraer salt (16 bytes), iv (12 bytes) y datos encriptados
+            const salt = encryptedData.slice(0, 16);
+            const iv = encryptedData.slice(16, 28);
+            const data = encryptedData.slice(28);
+            
+            // Derivar la clave con PBKDF2
+            const keyMaterial = await crypto.subtle.importKey(
+                'raw',
+                encoder.encode(ENCRYPTION_KEY),
+                'PBKDF2',
+                false,
+                ['deriveBits', 'deriveKey']
+            );
+            
+            const derivedKey = await crypto.subtle.deriveKey(
+                {
+                    name: 'PBKDF2',
+                    salt: salt,
+                    iterations: 100000,
+                    hash: 'SHA-256',
+                },
+                keyMaterial,
+                { name: 'AES-GCM', length: 256 },
+                false,
+                ['decrypt']
+            );
+            
+            // Desencriptar
+            const decryptedData = await crypto.subtle.decrypt(
+                { name: 'AES-GCM', iv: iv },
+                derivedKey,
+                data
+            );
+            
+            return decoder.decode(decryptedData);
+        } catch (error) {
+            console.error('❌ Error desencriptando token:', error.message);
+            console.warn('⚠️  Usando token sin desencriptar como fallback');
+            return encryptedToken; // Fallback: retornar el token original
+        }
+    }
 
     private generateToken(): string {
         const array = new Uint8Array(32);
@@ -154,22 +211,31 @@ class SimpleGateway {
                 return;
             }
 
-            const data = await response.json() as Record<string, { key: string; data: Backend; metadata?: any }>;
+            const result = await response.json() as { items?: Array<{ key: string; data: Backend; metadata?: any }> };
             
             this.backends.clear();
             
-            // El registry puede devolver un objeto directo o un objeto con múltiples backends
-            // Si tiene 'key' y 'data', es un solo backend
-            if ('key' in data && 'data' in data) {
-                const singleBackend = data as any;
-                this.backends.set(singleBackend.key, singleBackend.data);
-                console.log(`   ✓ ${singleBackend.key}: ${singleBackend.data.prefix} -> ${singleBackend.data.url}`);
+            // Si tiene items (respuesta del KV storage)
+            if (result.items && Array.isArray(result.items)) {
+                for (const item of result.items) {
+                    if (item.data) {
+                        this.backends.set(item.key, item.data);
+                        console.log(`   ✓ ${item.key}: ${item.data.prefix} -> ${item.data.url}`);
+                    }
+                }
             } else {
-                // Es un objeto con múltiples backends
-                for (const [key, value] of Object.entries(data)) {
-                    if (value?.data) {
-                        this.backends.set(key, value.data);
-                        console.log(`   ✓ ${key}: ${value.data.prefix} -> ${value.data.url}`);
+                // Formato legacy (objeto directo)
+                const data = result as any;
+                if ('key' in data && 'data' in data) {
+                    this.backends.set(data.key, data.data);
+                    console.log(`   ✓ ${data.key}: ${data.data.prefix} -> ${data.data.url}`);
+                } else {
+                    for (const [key, value] of Object.entries(data)) {
+                        if (typeof value === 'object' && value !== null && 'data' in value) {
+                            const backend = (value as any).data;
+                            this.backends.set(key, backend);
+                            console.log(`   ✓ ${key}: ${backend.prefix} -> ${backend.url}`);
+                        }
                     }
                 }
             }
@@ -372,7 +438,7 @@ class SimpleGateway {
             });
         }
 
-        // Construir URL del backend
+        // Construir URL del backend (remover prefijo)
         const pathWithoutPrefix = this.removePrefix(url.pathname, backend.prefix);
         const backendUrl = `${backend.url}${pathWithoutPrefix}${url.search}`;
 
@@ -381,8 +447,16 @@ class SimpleGateway {
         try {
             // Headers para el backend
             const headers = new Headers(req.headers);
-            headers.set('Authorization', `Bearer ${backend.token}`);
+            
+            // Desencriptar el token del backend (viene encriptado con AES-GCM)
+            const decryptedToken = await this.decryptToken(backend.token);
+            headers.set('Authorization', `Bearer ${decryptedToken}`);
             headers.delete('host'); // Evitar conflictos
+            
+            // console.log(`🔑 Token encriptado: ${backend.token.substring(0, 30)}...`);
+            // console.log(`🔓 Token desencriptado: ${decryptedToken.substring(0, 30)}...`);
+            
+            // Proxy request;
             
             // Proxy request
             const backendResponse = await fetch(backendUrl, {
