@@ -441,6 +441,31 @@ class SimpleGateway {
             });
         }
 
+        // Ver backends cargados con detalles (sin autenticación - público)
+        if (url.pathname === '/gateway/backends') {
+            const origin = req.headers.get('Origin');
+            const backendList = Array.from(this.backends.entries()).map(([key, b]) => ({
+                key: key,
+                name: b.name,
+                prefix: b.prefix,
+                url: b.url,
+                hasToken: !!b.token,
+                tokenLength: b.token?.length || 0,
+            }));
+
+            return new Response(JSON.stringify({
+                backends: backendList,
+                total: this.backends.size,
+                timestamp: new Date().toISOString(),
+            }, null, 2), {
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...this.getCorsHeaders(origin),
+                    ...this.getSecurityHeaders(),
+                },
+            });
+        }
+
         // Inicializar gateway si es la primera petición
         if (!this.isInitialized) {
             await this.initialize();
@@ -481,33 +506,10 @@ class SimpleGateway {
                     logout: 'POST /gateway/logout (requires token)',
                     health: 'GET /gateway/health (public)',
                     reload: 'POST /gateway/reload (public)',
+                    backends: 'GET /gateway/backends (public)',
                     info: 'GET / (requires token)',
-                    backends: 'GET /gateway/backends (requires token)',
                     users: 'GET /gateway/users (requires token)',
                 },
-            }, null, 2), {
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*',
-                },
-            });
-        }
-
-        // Ver backends cargados con detalles
-        if (url.pathname === '/gateway/backends') {
-            const backendList = Array.from(this.backends.entries()).map(([key, b]) => ({
-                key: key,
-                name: b.name,
-                prefix: b.prefix,
-                url: b.url,
-                hasToken: !!b.token,
-                tokenLength: b.token?.length || 0,
-            }));
-
-            return new Response(JSON.stringify({
-                backends: backendList,
-                total: this.backends.size,
-                timestamp: new Date().toISOString(),
             }, null, 2), {
                 headers: { 
                     'Content-Type': 'application/json',
