@@ -116,7 +116,7 @@ async function saveBackend(name: string, data: unknown): Promise<void> {
 deployctl deploy \
   --project=mi-registry \
   --env=API_KEY=tu-api-key-secreta \
-  src/registry-server-kv.ts
+  scripts/registry-server-kv.ts
 ```
 
 ---
@@ -126,7 +126,7 @@ deployctl deploy \
 Los backends deben tener URLs públicas (no localhost):
 
 ```bash
-deno run -A scripts/register-backend.ts \
+deno run -A src/register-backend.ts \
   --name=produccion \
   --backend-url=https://api.miservicio.com \
   --backend-token=token-secreto \
@@ -333,7 +333,7 @@ backend-gateway/
 deployctl deploy \
   --project=my-registry \
   --env=API_KEY=secret-key-123 \
-  src/registry-server-kv.ts
+  scripts/registry-server-kv.ts
 ```
 
 ### 3. Deploy gateway
@@ -349,7 +349,7 @@ deployctl deploy \
 ### 4. Registrar backend
 
 ```bash
-deno run -A scripts/register-backend.ts \
+deno run -A src/register-backend.ts \
   --name=api-prod \
   --backend-url=https://api.example.com \
   --backend-token=backend-token-xyz \

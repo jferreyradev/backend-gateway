@@ -5,7 +5,7 @@
  * Registra un backend en el servidor de registro de backends
  * 
  * Uso:
- *   deno run -A register-backend.ts \
+ *   deno run -A src/register-backend.ts \
  *     --name=prod \
  *     --backend-url=http://10.6.46.114:3013 \
  *     --backend-token=secret \

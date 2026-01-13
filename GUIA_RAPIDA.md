@@ -175,10 +175,10 @@ deno run -A .\scripts\register-user.ts `
 
 | Archivo | Descripción |
 |---------|-------------|
-| `src/registry-server.ts` | Servidor de registro (KV local) |
+| `scripts/registry-server.ts` | Servidor de registro (KV local) |
 | `src/simple-gateway.ts` | Gateway sin auth (local y Deno Deploy) |
 | `src/gateway-server.ts` | Gateway con autenticación completa |
-| `scripts/register-backend.ts` | Script de auto-registro |
+| `src/register-backend.ts` | Script de auto-registro |
 | `backends.json` | Storage local de backends |
 
 ---

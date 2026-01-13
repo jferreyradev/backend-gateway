@@ -12,109 +12,192 @@ Gateway minimalista para enrutamiento automático de backends con **Deno**.
 
 ---
 
-## � Estructura del Proyecto
+## 📁 Estructura del Proyecto
 
 ```
 backend-gateway/
-├── src/                    # Código fuente
-│   ├── gateway-server.ts   # Gateway principal
-│   └── registry-server.ts  # Servidor de registro local
-├── scripts/                # Scripts y utilidades
-│   ├── register-backend.ts # CLI para registrar backends
-│   ├── test-general.ts     # Test completo del sistema
-│   ├── test-auth.ts        # Test de autenticación
-│   ├── test-kv.ts          # Test del KV storage
-│   └── check-backends.ts   # Verificar backends
-├── docs/                   # Documentación
-│   ├── AUTHENTICATION.md   # Guía de autenticación
-│   ├── DEPLOY_DENO.md      # Deploy en Deno Deploy
-│   └── QUICKSTART.md       # Inicio rápido
-├── backends.json           # Datos para servidor local
-├── deno.json               # Configuración de Deno
-└── README.md               # Este archivo
+├── src/                        # 🎯 Código fuente principal
+│   ├── simple-gateway.ts       # Gateway principal
+│   ├── register-backend.ts     # CLI para registrar backends
+│   └── register-user.ts        # CLI para gestionar usuarios
+│
+├── scripts/                    # 🧪 Testing y desarrollo
+│   ├── registry-server.ts      # Mock del KV Storage (desarrollo local)
+│   ├── test-auth.ts            # Test de autenticación
+│   ├── test-gateway.ts         # Test del gateway
+│   ├── test-general.ts         # Test completo del sistema
+│   └── check-backends.ts       # Verificar backends
+│
+├── docs/                       # 📚 Documentación
+│   ├── SISTEMA_GATEWAY.md      # ⭐ Resumen completo del sistema
+│   ├── MEJORAS_IMPLEMENTADAS.md# Mejoras recientes
+│   ├── AUTHENTICATION.md       # Guía de autenticación
+│   ├── DEPLOY_GATEWAY.md       # Deploy en Deno Deploy
+│   ├── USER_MANAGEMENT.md      # Gestión de usuarios
+│   └── TESTING.md              # Guía de testing
+│
+├── 📄 *.json                   # Archivos de datos
+│   ├── backends.json           # Datos de ejemplo (mock server)
+│   ├── users.json              # Usuarios de ejemplo (mock server)
+│   ├── user-admin.json         # Usuario admin de ejemplo
+│   └── deno.json               # Configuración de Deno
+│
+├── .env.example                # Ejemplo de variables de entorno
+├── GUIA_RAPIDA.md              # Guía rápida de uso
+├── main.ts                     # Entry point para Deno Deploy
+└── README.md                   # ⭐ Este archivo
 ```
+
+### 🎭 Desarrollo Local vs Producción
+
+**Producción** (Recomendado):
+- Gateway → KV Storage en la nube (`https://kv-storage-api.deno.dev`)
+- Sin necesidad de `registry-server.ts`
+- Sin archivos JSON
+
+**Desarrollo Local** (Offline):
+- `scripts/registry-server.ts` simula el KV Storage
+- Usa `backends.json` y `users.json`
+- Ideal para desarrollo sin internet
 
 ---
 
 ## 🚀 Inicio Rápido
 
-### 1. Iniciar el Gateway
+### 1. Configurar Variables de Entorno
 
 ```bash
-# Configurar variables de entorno
+# Copiar ejemplo de configuración
+copy .env.example .env
+
+# Editar .env con tus valores
+# O configurar en PowerShell:
 $env:BACKENDS_REGISTRY_URL="https://kv-storage-api.deno.dev"
 $env:API_KEY="tu-api-key"
-$env:GATEWAY_USERNAME="admin"
-$env:GATEWAY_PASSWORD="tu-password-seguro"
+$env:ENCRYPTION_KEY="clave-segura-de-al-menos-32-caracteres"
+```
 
+### 2. Registrar Usuarios
+
+```bash
+# Registrar usuario administrador
+deno run -A src/register-user.ts \
+  --username admin \
+  --password admin123 \
+  --roles admin,user
+
+# Registrar usuario normal
+deno run -A src/register-user.ts \
+  --username developer \
+  --password dev456
+```
+
+### 3. Registrar Backends
+
+```bash
+# Registrar backend de producción
+deno run -A src/register-backend.ts \
+  --name=produccion \
+  --backend-url=http://api.prod:3000 \
+  --backend-token=secret-prod-token \
+  --prefix=/prod \
+  --registry-url=https://kv-storage-api.deno.dev \
+  --api-key=tu-api-key
+
+# Registrar backend de desarrollo
+deno run -A src/register-backend.ts \
+  --name=desarrollo \
+  --backend-url=http://localhost:3001 \
+  --backend-token=dev-token-123 \
+  --prefix=/desa \
+  --registry-url=https://kv-storage-api.deno.dev \
+  --api-key=tu-api-key
+```
+
+### 4. Iniciar el Gateway
+
+```bash
 # Iniciar gateway
-deno task dev
+deno run -A src/simple-gateway.ts
+
+# O con variables personalizadas
+PORT=8000 deno run -A src/simple-gateway.ts
 ```
 
-### 2. Autenticarse
+### 5. Usar el Gateway
 
 ```bash
-# Obtener token
-curl -X POST http://localhost:8000/gateway/login \
+# 1. Login para obtener token
+curl -X POST http://localhost:8080/gateway/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"tu-password-seguro"}'
+  -d '{"username":"admin","password":"admin123"}'
 
-# Respuesta:
-# {"token":"ABC123...","expiresIn":3600,"tokenType":"Bearer"}
-```
+# Respuesta: {"token":"abc123...","expiresIn":3600,"tokenType":"Bearer"}
 
-### 3. Usar el Gateway
+# 2. Ver información del gateway
+curl http://localhost:8080/gateway \
+  -H "Authorization: Bearer abc123..."
 
-```bash
-# Ver status (requiere token)
-curl http://localhost:8000/gateway/status \
-  -H "Authorization: Bearer ABC123..."
+# 3. Hacer petición a backend
+curl http://localhost:8080/prod/api/users \
+  -H "Authorization: Bearer abc123..."
 
-# Proxy a backend (requiere token)
-curl http://localhost:8000/api/endpoint \
-  -H "Authorization: Bearer ABC123..."
-
-# Logout cuando termines
-curl -X POST http://localhost:8000/gateway/logout \
-  -H "Authorization: Bearer ABC123..."
+# 4. Logout
+curl -X POST http://localhost:8080/gateway/logout \
+  -H "Authorization: Bearer abc123..."
 ```
 
 ---
 
 ## 🧪 Testing
 
-**IMPORTANTE**: Debes tener el gateway corriendo en una terminal antes de ejecutar los tests.
+### Tests Disponibles
 
-### Iniciar el Gateway (Terminal 1)
-```bash
-deno task dev
-```
-
-### Ejecutar Tests (Terminal 2)
-
-#### Test Simple (Rápido - 3 pruebas)
-```bash
-deno task test:simple
-```
-
-#### Test Completo (13 pruebas)
-```bash
-deno task test
-```
-
-#### Tests Individuales
 ```bash
 # Test de autenticación
-deno task test:auth
+deno run -A scripts/test-auth.ts
 
-# Test de KV storage
-deno task test:kv
+# Test del gateway completo
+deno run -A scripts/test-gateway.ts
 
 # Verificar backends registrados
-deno task check
+deno run -A scripts/check-backends.ts
 ```
 
 Ver [docs/TESTING.md](docs/TESTING.md) para guía completa de testing.
+
+---
+
+## 🏠 Desarrollo Local (Offline)
+
+Para desarrollar sin conexión o sin acceso al KV Storage en la nube:
+
+```bash
+# Terminal 1: Iniciar mock del KV Storage
+deno run -A scripts/registry-server.ts
+# Escucha en http://localhost:8001
+# Usa backends.json y users.json
+
+# Terminal 2: Gateway apuntando al mock local
+BACKENDS_REGISTRY_URL=http://localhost:8001 \
+API_KEY=desarrollo-api-key-2026 \
+deno run -A src/simple-gateway.ts
+
+# Terminal 3: Registrar backend en el mock
+deno run -A src/register-backend.ts \
+  --name=test \
+  --backend-url=http://localhost:3000 \
+  --backend-token=test-token \
+  --prefix=/test \
+  --registry-url=http://localhost:8001 \
+  --api-key=desarrollo-api-key-2026
+```
+
+**Ventajas del mock local:**
+- ✅ Desarrollo sin internet
+- ✅ Testing rápido sin dependencias externas
+- ✅ Datos persistentes en JSON
+- ✅ Mismo comportamiento que KV Storage real
 
 ---
 
@@ -131,103 +214,126 @@ Ver [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md) para detalles completos.
 
 ---
 
+## 📚 Documentación Completa
+
+- **[📋 SISTEMA_GATEWAY.md](docs/SISTEMA_GATEWAY.md)** - Documentación completa del sistema
+- **[✨ MEJORAS_IMPLEMENTADAS.md](docs/MEJORAS_IMPLEMENTADAS.md)** - Mejoras recientes
+- **[🔐 AUTHENTICATION.md](docs/AUTHENTICATION.md)** - Guía de autenticación
+- **[🚀 DEPLOY_GATEWAY.md](docs/DEPLOY_GATEWAY.md)** - Deploy en Deno Deploy
+- **[👤 USER_MANAGEMENT.md](docs/USER_MANAGEMENT.md)** - Gestión de usuarios
+- **[🧪 TESTING.md](docs/TESTING.md)** - Guía de testing
+- **[⚡ GUIA_RAPIDA.md](GUIA_RAPIDA.md)** - Guía rápida de uso
+
+---
+
 ## 🌍 Deploy en Deno Deploy
 
-1. Push a GitHub
-2. Conecta tu repo en [dash.deno.com](https://dash.deno.com)
-3. Configura variables:
-   - `BACKENDS_REGISTRY_URL`
-   - `API_KEY`
+1. Push tu código a GitHub
+2. Conecta tu repositorio en [dash.deno.com](https://dash.deno.com)
+3. Configura las variables de entorno:
+   - `BACKENDS_REGISTRY_URL` - URL del KV storage
+   - `API_KEY` - API Key para el KV storage
+   - `ENCRYPTION_KEY` - Clave de encriptación (32+ caracteres)
+   - `ALLOWED_ORIGINS` - Orígenes CORS permitidos
 4. Deploy automático ✅
 
----
-
-## 📊 Endpoints
-
-- `GET /gateway/health` - Health check
-- `GET /gateway/status` - Estado de backends
-- `GET /gateway/routing` - Tabla de rutas
-- `/{prefix}/*` - Proxy a backends
+Más detalles en [DEPLOY_GATEWAY.md](docs/DEPLOY_GATEWAY.md)
 
 ---
+
+## 📊 Características Principales
+
+### 🔒 Seguridad
+- ✅ Autenticación con tokens Bearer
+- ✅ Encriptación AES-GCM-256 para tokens de backend
+- ✅ Hash SHA-256 para passwords
+- ✅ CORS configurable
+- ✅ Headers de seguridad (X-Frame-Options, X-XSS-Protection)
+- ✅ Validación de configuración al inicio
+
+### 🎯 Observabilidad
+- ✅ Request IDs únicos (X-Request-ID)
+- ✅ Medición de latencia (X-Response-Time)
+- ✅ Logging estructurado con IDs
+- ✅ Health checks
+
+### 🚀 Performance
+- ✅ Enrutamiento por prefijos
+- ✅ Caché de backends configurable
+- ✅ Auto-recarga de configuración
 
 ---
 
 ## ⚙️ Variables de Entorno
 
-### Gateway (`simple-gateway.ts`)
-- `BACKENDS_REGISTRY_URL` - URL del servidor de registro (requerido)
-- `API_KEY` - API Key del registro (requerido)
-- `ENCRYPTION_KEY` - Clave para desencriptar (opcional)
-- `CACHE_TTL_MS` - TTL del caché en ms (default: 30000)
-- `PROXY_PORT` - Puerto local (default: 8080)
-
-### Register (`register-backend.ts`)
-- `--name` - Nombre del backend
-- `--backend-url` - URL del backend
-- `--backend-port` - Puerto (para IP pública)
-- `--use-public-ip` - Detectar IP automáticamente
-- `--backend-token` - Token de autenticación
-- `--prefix` - Prefijo de ruta
-- `--registry-url` - URL del registro
-- `--api-key` - API Key del registro
-- `--encryption-key` - Clave de encriptación (opcional)
-- `--daemon` - Modo automático (cada 5 min)
+| Variable | Default | Descripción |
+|----------|---------|-------------|
+| `PORT` | `8080` | Puerto del gateway |
+| `BACKENDS_REGISTRY_URL` | `https://kv-storage-api.deno.dev` | URL del KV storage |
+| `API_KEY` | `desarrollo-api-key-2026` | API Key del KV storage |
+| `ENCRYPTION_KEY` | `go-oracle-api-secure-key-2026` | Clave de encriptación (32+ chars) |
+| `TOKEN_TTL_MS` | `3600000` | TTL de tokens de sesión (1h) |
+| `ALLOWED_ORIGINS` | `*` | Orígenes CORS (separados por comas) |
+| `CACHE_TTL_MS` | `30000` | TTL del caché de backends (30s) |
 
 ---
 
-## 📚 Documentación
-
-- [QUICKSTART.md](QUICKSTART.md) - Guía rápida
-- [.env.example](.env.example) - Variables de ejemplo
-
----
-
-## 🔗 API Gateway
-
-### Endpoints de Monitoreo
-
-| Endpoint | Descripción |
-|----------|-------------|
-| `GET /gateway/health` | Estado del gateway |
-| `GET /gateway/status` | Estado de todos los backends |
-| `GET /gateway/routing` | Tabla de enrutamiento |
-
-### Enrutamiento
-
-El gateway enruta según el prefijo más específico:
-
-```
-GET /api/users  →  Backend con prefix /api
-GET /api/v2/posts  →  Backend con prefix /api/v2 (si existe)
-```
-
----
-
-## 🛠️ Desarrollo
-
-### Estructura
-
-```
-backend-gateway/
-├── simple-gateway.ts      # Servidor de proxy/gateway
-├── register-backend.ts    # Cliente de registro
-├── install.ts            # Instalador automático
-├── deno.json             # Configuración
-└── .env.example          # Template de variables
-```
-
-### Ejecutar en desarrollo
+## 🛠️ Comandos Útiles
 
 ```bash
-# Gateway
-deno run -A simple-gateway.ts
+# Ver usuarios registrados
+deno run -A src/register-user.ts --list
 
-# Register (otra terminal)
-deno run -A register-backend.ts --name=test --backend-url=http://localhost:3000 --backend-token=test --prefix=/test --registry-url=http://localhost:8000 --api-key=test
+# Eliminar usuario
+deno run -A src/register-user.ts --delete username
+
+# Verificar backends
+deno run -A scripts/check-backends.ts
+
+# Test de autenticación
+deno run -A scripts/test-auth.ts
 ```
 
 ---
+
+## 📝 Notas
+
+- Los tokens de backend se almacenan **encriptados** en el KV storage
+- Los passwords de usuario se almacenan **hasheados** con SHA-256
+- Los tokens de sesión son temporales y se almacenan en memoria
+- CORS está configurado como `*` por default (cambiar en producción)
+
+### 📦 Archivos JSON
+
+Los archivos `*.json` en la raíz son **datos de ejemplo** para el mock server:
+- `backends.json` - Backend de ejemplo (usado por `scripts/registry-server.ts`)
+- `users.json` - Usuario admin de ejemplo (password: `admin123`)
+- `user-admin.json` - Otro formato de usuario de ejemplo
+- `deno.json` - ⚠️ **NO TOCAR** - Configuración de Deno
+
+**En producción**, estos archivos JSON NO se usan. El sistema usa KV Storage en la nube.
+
+---
+
+## 🤝 Contribuir
+
+Para contribuir al proyecto:
+
+1. Fork el repositorio
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
+
+---
+
+## 📄 Licencia
+
+Este proyecto está bajo licencia MIT - ver el archivo LICENSE para más detalles.
+
+---
+
+**Última actualización**: 13 de enero de 2026
 
 ## 📝 Notas
 

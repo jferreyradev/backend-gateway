@@ -12,6 +12,16 @@
  *   - PORT: Puerto del gateway (default: 8080, ignorado en Deno Deploy)
  *   - CACHE_TTL_MS: TTL del caché en ms (default: 30000)
  *   - TOKEN_TTL_MS: TTL de tokens de autenticación en ms (default: 3600000)
+ *   - ENCRYPTION_KEY: Clave para desencriptar tokens de backend
+ *   - ALLOWED_ORIGINS: Orígenes CORS permitidos separados por comas (default: *)
+ * 
+ * Mejoras implementadas:
+ *   ✅ CORS configurable por variable de entorno
+ *   ✅ Headers de seguridad (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection)
+ *   ✅ Request IDs únicos para trazabilidad (X-Request-ID)
+ *   ✅ Medición de latencia (X-Response-Time)
+ *   ✅ Logging estructurado con request IDs
+ *   ✅ Validación de configuración al inicio
  */
 
 const PORT = parseInt(Deno.env.get('PORT') || '8080');
@@ -19,6 +29,7 @@ const BACKENDS_REGISTRY_URL = Deno.env.get('BACKENDS_REGISTRY_URL') || 'https://
 const API_KEY = Deno.env.get('API_KEY') || 'desarrollo-api-key-2026';
 const TOKEN_TTL = parseInt(Deno.env.get('TOKEN_TTL_MS') || '3600000'); // 1 hora
 const ENCRYPTION_KEY = Deno.env.get('ENCRYPTION_KEY') || 'go-oracle-api-secure-key-2026';
+const ALLOWED_ORIGINS = Deno.env.get('ALLOWED_ORIGINS')?.split(',') || ['*'];
 
 interface Backend {
     name: string;
@@ -105,6 +116,32 @@ class SimpleGateway {
         const array = new Uint8Array(32);
         crypto.getRandomValues(array);
         return btoa(String.fromCharCode(...array)).replace(/[+/=]/g, '');
+    }
+
+    private generateRequestId(): string {
+        return crypto.randomUUID();
+    }
+
+    private getCorsHeaders(origin: string | null): Record<string, string> {
+        let allowedOrigin = '*';
+        
+        if (!ALLOWED_ORIGINS.includes('*') && origin) {
+            allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+        }
+        
+        return {
+            'Access-Control-Allow-Origin': allowedOrigin,
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        };
+    }
+
+    private getSecurityHeaders(): Record<string, string> {
+        return {
+            'X-Content-Type-Options': 'nosniff',
+            'X-Frame-Options': 'DENY',
+            'X-XSS-Protection': '1; mode=block',
+        };
     }
 
     private validateToken(authHeader: string | null): boolean {
@@ -283,31 +320,40 @@ class SimpleGateway {
 
         // CORS
         if (req.method === 'OPTIONS') {
+            const origin = req.headers.get('Origin');
             return new Response(null, {
                 status: 204,
                 headers: {
-                    'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-                    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+                    ...this.getCorsHeaders(origin),
+                    ...this.getSecurityHeaders(),
                 },
             });
         }
 
         // Endpoint de login (sin autenticación)
         if (url.pathname === '/gateway/login' && req.method === 'POST') {
+            const requestId = this.generateRequestId();
+            const origin = req.headers.get('Origin');
             try {
                 const body = await req.json() as { username: string; password: string };
+                console.log(`[${requestId}] 🔐 Login attempt: ${body.username}`);
                 const result = await this.login(body.username, body.password);
                 
                 if (!result) {
+                    console.log(`[${requestId}] ❌ Login failed: ${body.username}`);
                     return new Response(JSON.stringify({
                         error: 'Invalid credentials',
                     }), {
                         status: 401,
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-Request-ID': requestId,
+                            ...this.getCorsHeaders(origin),
+                        },
                     });
                 }
                 
+                console.log(`[${requestId}] ✅ Login successful: ${body.username}`);
                 return new Response(JSON.stringify({
                     token: result.token,
                     expiresIn: result.expiresIn,
@@ -315,15 +361,22 @@ class SimpleGateway {
                 }), {
                     headers: { 
                         'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': '*',
+                        'X-Request-ID': requestId,
+                        ...this.getCorsHeaders(origin),
+                        ...this.getSecurityHeaders(),
                     },
                 });
             } catch {
+                console.log(`[${requestId}] ⚠️  Invalid login request body`);
                 return new Response(JSON.stringify({
                     error: 'Invalid request body',
                 }), {
                     status: 400,
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-Request-ID': requestId,
+                        ...this.getCorsHeaders(origin),
+                    },
                 });
             }
         }
@@ -354,6 +407,7 @@ class SimpleGateway {
 
         // Health check (sin autenticación)
         if (url.pathname === '/gateway/health') {
+            const origin = req.headers.get('Origin');
             return new Response(JSON.stringify({ 
                 status: 'ok',
                 timestamp: new Date().toISOString(),
@@ -361,7 +415,8 @@ class SimpleGateway {
             }), {
                 headers: { 
                     'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*',
+                    ...this.getCorsHeaders(origin),
+                    ...this.getSecurityHeaders(),
                 },
             });
         }
@@ -548,8 +603,10 @@ class SimpleGateway {
         // Construir URL del backend (remover prefijo)
         const pathWithoutPrefix = this.removePrefix(url.pathname, backend.prefix);
         const backendUrl = `${backend.url}${pathWithoutPrefix}${url.search}`;
+        const requestId = this.generateRequestId();
+        const startTime = Date.now();
 
-        console.log(`➡️  ${req.method} ${url.pathname} -> ${backend.name} (${backendUrl})`);
+        console.log(`[${requestId}] ➡️  ${req.method} ${url.pathname} -> ${backend.name} (${backendUrl})`);
 
         try {
             // Headers para el backend
@@ -574,9 +631,27 @@ class SimpleGateway {
 
             // Copiar headers de respuesta
             const responseHeaders = new Headers(backendResponse.headers);
+            const latency = Date.now() - startTime;
+            const origin = req.headers.get('Origin');
+            
             responseHeaders.set('X-Proxied-By', 'simple-gateway');
             responseHeaders.set('X-Backend', backend.name);
-            responseHeaders.set('Access-Control-Allow-Origin', '*');
+            responseHeaders.set('X-Request-ID', requestId);
+            responseHeaders.set('X-Response-Time', `${latency}ms`);
+            
+            // CORS configurable
+            const corsHeaders = this.getCorsHeaders(origin);
+            Object.entries(corsHeaders).forEach(([key, value]) => {
+                responseHeaders.set(key, value);
+            });
+            
+            // Headers de seguridad
+            const securityHeaders = this.getSecurityHeaders();
+            Object.entries(securityHeaders).forEach(([key, value]) => {
+                responseHeaders.set(key, value);
+            });
+
+            console.log(`[${requestId}] ✅ ${backendResponse.status} (${latency}ms)`);
 
             return new Response(backendResponse.body, {
                 status: backendResponse.status,
@@ -585,20 +660,62 @@ class SimpleGateway {
             });
 
         } catch (error) {
-            console.error(`❌ Error proxying to ${backend.name}:`, error);
+            const latency = Date.now() - startTime;
+            console.error(`[${requestId}] ❌ Error proxying to ${backend.name} (${latency}ms):`, error);
             
             return new Response(JSON.stringify({
                 error: 'Backend error',
                 backend: backend.name,
                 url: backendUrl,
                 message: error instanceof Error ? error.message : 'Unknown error',
+                requestId: requestId,
             }), {
                 status: 502,
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-Request-ID': requestId,
+                },
             });
         }
     }
 }
+
+// Validación de configuración al inicio
+function validateConfig(): void {
+    const errors: string[] = [];
+    
+    if (!BACKENDS_REGISTRY_URL) {
+        errors.push('BACKENDS_REGISTRY_URL es requerido');
+    }
+    
+    if (!API_KEY) {
+        errors.push('API_KEY es requerido');
+    }
+    
+    if (!ENCRYPTION_KEY) {
+        errors.push('ENCRYPTION_KEY es requerido');
+    } else if (ENCRYPTION_KEY.length < 32) {
+        console.warn('⚠️  ENCRYPTION_KEY muy corta (recomendado: 32+ caracteres)');
+    }
+    
+    if (errors.length > 0) {
+        console.error('❌ Errores de configuración:');
+        errors.forEach(err => console.error(`   - ${err}`));
+        console.error('\n💡 Configura las variables de entorno requeridas\n');
+        Deno.exit(1);
+    }
+    
+    // Info de configuración
+    console.log('✅ Configuración validada:');
+    console.log(`   - Registry: ${BACKENDS_REGISTRY_URL}`);
+    console.log(`   - Port: ${PORT}`);
+    console.log(`   - Token TTL: ${TOKEN_TTL / 1000}s`);
+    console.log(`   - CORS Origins: ${ALLOWED_ORIGINS.join(', ')}`);
+    console.log('');
+}
+
+// Validar antes de iniciar
+validateConfig();
 
 // Iniciar servidor
 const gateway = new SimpleGateway();
@@ -609,7 +726,7 @@ console.log(`
 ╠═══════════════════════════════════════════╣
 ║ 🚀 Puerto: ${PORT}                            ║
 ║ 📡 Registry: ${BACKENDS_REGISTRY_URL.padEnd(27)}║
-║ � Con autenticación (login requerido)   ║
+║ 🔒 Con autenticación (login requerido)   ║
 ╚═══════════════════════════════════════════╝
 `);
 

@@ -1,4 +1,6 @@
 {
+  "_comment": "Este archivo es usado por scripts/registry-server.ts (mock local del KV Storage)",
+  "_description": "Ejemplo de usuarios registrados para desarrollo/testing local",
   "admin": {
     "key": "admin",
     "data": {

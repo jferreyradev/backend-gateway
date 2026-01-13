@@ -1,8 +1,40 @@
 #!/usr/bin/env -S deno run --allow-net --allow-read --allow-write
 
 /**
- * Simple Registry Server (KV Storage)
- * Almacena y recupera configuraciones de backends
+ * Registry Server Mock (KV Storage Local)
+ * 
+ * 🎭 Mock/Fake del KV Storage API para desarrollo local
+ * 
+ * Este servidor simula el comportamiento del KV Storage real
+ * usando archivos JSON locales, permitiendo desarrollo offline
+ * y testing sin dependencias externas.
+ * 
+ * Uso:
+ *   # Terminal 1: Iniciar mock server
+ *   deno run -A scripts/registry-server.ts
+ * 
+ *   # Terminal 2: Gateway apuntando al mock
+ *   BACKENDS_REGISTRY_URL=http://localhost:8001 \
+ *   deno run -A src/simple-gateway.ts
+ * 
+ * Variables de entorno:
+ *   - REGISTRY_PORT: Puerto del servidor mock (default: 8001)
+ *   - API_KEY: API Key de autenticación (default: desarrollo-api-key-2026)
+ * 
+ * Archivos de datos:
+ *   - backends.json: Mock de colección de backends
+ *   - users.json: Mock de colección de usuarios
+ * 
+ * Endpoints simulados (compatible con KV Storage API):
+ *   POST   /collections/backend        - Crear backend
+ *   PUT    /collections/backend/{name} - Actualizar backend
+ *   GET    /collections/backend/{name} - Obtener backend específico
+ *   GET    /collections/backend        - Listar todos los backends
+ *   DELETE /collections/backend/{name} - Eliminar backend
+ *   POST   /collections/users          - Crear usuario
+ *   GET    /collections/users/{name}   - Obtener usuario específico
+ *   GET    /collections/users          - Listar todos los usuarios
+ *   DELETE /collections/users          - Eliminar usuario (con ?key=)
  */
 
 const PORT = parseInt(Deno.env.get('REGISTRY_PORT') || '8001');
