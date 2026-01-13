@@ -471,7 +471,95 @@ class SimpleGateway {
             await this.initialize();
         }
 
-        // Validar token para todas las demás rutas
+        // Buscar backend ANTES de validar autenticación del gateway
+        // Las rutas de backend no requieren autenticación del gateway, solo del backend mismo
+        let backend = this.findBackend(url.pathname);
+
+        // Si no se encuentra, intentar recargar backends y buscar nuevamente
+        if (!backend && url.pathname !== '/' && url.pathname !== '/gateway' && 
+            !url.pathname.startsWith('/gateway/')) {
+            console.log(`⚠️  Backend no encontrado para ${url.pathname}, recargando...`);
+            await this.loadBackends();
+            backend = this.findBackend(url.pathname);
+        }
+
+        // Si encontramos un backend, hacer el proxy SIN validar token del gateway
+        if (backend) {
+            // Construir URL del backend (remover prefijo)
+            const pathWithoutPrefix = this.removePrefix(url.pathname, backend.prefix);
+            const backendUrl = `${backend.url}${pathWithoutPrefix}${url.search}`;
+            const requestId = this.generateRequestId();
+            const startTime = Date.now();
+
+            console.log(`[${requestId}] ➡️  ${req.method} ${url.pathname} -> ${backend.name} (${backendUrl})`);
+
+            try {
+                // Headers para el backend
+                const headers = new Headers(req.headers);
+                
+                // Desencriptar el token del backend (viene encriptado con AES-GCM)
+                const decryptedToken = await this.decryptToken(backend.token);
+                headers.set('Authorization', `Bearer ${decryptedToken}`);
+                headers.delete('host'); // Evitar conflictos
+                
+                // Proxy request
+                const backendResponse = await fetch(backendUrl, {
+                    method: req.method,
+                    headers,
+                    body: req.method !== 'GET' && req.method !== 'HEAD' ? req.body : undefined,
+                });
+
+                // Copiar headers de respuesta
+                const responseHeaders = new Headers(backendResponse.headers);
+                const latency = Date.now() - startTime;
+                const origin = req.headers.get('Origin');
+                
+                responseHeaders.set('X-Proxied-By', 'simple-gateway');
+                responseHeaders.set('X-Backend', backend.name);
+                responseHeaders.set('X-Request-ID', requestId);
+                responseHeaders.set('X-Response-Time', `${latency}ms`);
+                
+                // CORS configurable
+                const corsHeaders = this.getCorsHeaders(origin);
+                Object.entries(corsHeaders).forEach(([key, value]) => {
+                    responseHeaders.set(key, value);
+                });
+                
+                // Headers de seguridad
+                const securityHeaders = this.getSecurityHeaders();
+                Object.entries(securityHeaders).forEach(([key, value]) => {
+                    responseHeaders.set(key, value);
+                });
+
+                console.log(`[${requestId}] ✅ ${backendResponse.status} (${latency}ms)`);
+
+                return new Response(backendResponse.body, {
+                    status: backendResponse.status,
+                    statusText: backendResponse.statusText,
+                    headers: responseHeaders,
+                });
+
+            } catch (error) {
+                const latency = Date.now() - startTime;
+                console.error(`[${requestId}] ❌ Error proxying to ${backend.name} (${latency}ms):`, error);
+                
+                return new Response(JSON.stringify({
+                    error: 'Backend error',
+                    backend: backend.name,
+                    url: backendUrl,
+                    message: error instanceof Error ? error.message : 'Unknown error',
+                    requestId: requestId,
+                }), {
+                    status: 502,
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-Request-ID': requestId,
+                    },
+                });
+            }
+        }
+
+        // Validar token SOLO para rutas del gateway (no para backends)
         const authHeader = req.headers.get('Authorization');
         if (!this.validateToken(authHeader)) {
             return new Response(JSON.stringify({
@@ -567,118 +655,16 @@ class SimpleGateway {
             }
         }
 
-        // Health check
-        if (url.pathname === '/gateway/health') {
-            return new Response(JSON.stringify({ 
-                status: 'ok',
-                timestamp: new Date().toISOString(),
-                backends: this.backends.size,
-            }), {
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*',
-                },
-            });
-        }
-
-        // Buscar backend
-        let backend = this.findBackend(url.pathname);
-
-        // Si no se encuentra, intentar recargar backends y buscar nuevamente
-        if (!backend) {
-            console.log(`⚠️  Backend no encontrado para ${url.pathname}, recargando...`);
-            await this.loadBackends();
-            backend = this.findBackend(url.pathname);
-        }
-
-        if (!backend) {
-            return new Response(JSON.stringify({
-                error: 'No backend found',
-                path: url.pathname,
-                availableRoutes: Array.from(this.backends.values()).map(b => b.prefix),
-            }), {
-                status: 404,
-                headers: { 'Content-Type': 'application/json' },
-            });
-        }
-
-        // Construir URL del backend (remover prefijo)
-        const pathWithoutPrefix = this.removePrefix(url.pathname, backend.prefix);
-        const backendUrl = `${backend.url}${pathWithoutPrefix}${url.search}`;
-        const requestId = this.generateRequestId();
-        const startTime = Date.now();
-
-        console.log(`[${requestId}] ➡️  ${req.method} ${url.pathname} -> ${backend.name} (${backendUrl})`);
-
-        try {
-            // Headers para el backend
-            const headers = new Headers(req.headers);
-            
-            // Desencriptar el token del backend (viene encriptado con AES-GCM)
-            const decryptedToken = await this.decryptToken(backend.token);
-            headers.set('Authorization', `Bearer ${decryptedToken}`);
-            headers.delete('host'); // Evitar conflictos
-            
-            // console.log(`🔑 Token encriptado: ${backend.token.substring(0, 30)}...`);
-            // console.log(`🔓 Token desencriptado: ${decryptedToken.substring(0, 30)}...`);
-            
-            // Proxy request;
-            
-            // Proxy request
-            const backendResponse = await fetch(backendUrl, {
-                method: req.method,
-                headers,
-                body: req.method !== 'GET' && req.method !== 'HEAD' ? req.body : undefined,
-            });
-
-            // Copiar headers de respuesta
-            const responseHeaders = new Headers(backendResponse.headers);
-            const latency = Date.now() - startTime;
-            const origin = req.headers.get('Origin');
-            
-            responseHeaders.set('X-Proxied-By', 'simple-gateway');
-            responseHeaders.set('X-Backend', backend.name);
-            responseHeaders.set('X-Request-ID', requestId);
-            responseHeaders.set('X-Response-Time', `${latency}ms`);
-            
-            // CORS configurable
-            const corsHeaders = this.getCorsHeaders(origin);
-            Object.entries(corsHeaders).forEach(([key, value]) => {
-                responseHeaders.set(key, value);
-            });
-            
-            // Headers de seguridad
-            const securityHeaders = this.getSecurityHeaders();
-            Object.entries(securityHeaders).forEach(([key, value]) => {
-                responseHeaders.set(key, value);
-            });
-
-            console.log(`[${requestId}] ✅ ${backendResponse.status} (${latency}ms)`);
-
-            return new Response(backendResponse.body, {
-                status: backendResponse.status,
-                statusText: backendResponse.statusText,
-                headers: responseHeaders,
-            });
-
-        } catch (error) {
-            const latency = Date.now() - startTime;
-            console.error(`[${requestId}] ❌ Error proxying to ${backend.name} (${latency}ms):`, error);
-            
-            return new Response(JSON.stringify({
-                error: 'Backend error',
-                backend: backend.name,
-                url: backendUrl,
-                message: error instanceof Error ? error.message : 'Unknown error',
-                requestId: requestId,
-            }), {
-                status: 502,
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'X-Request-ID': requestId,
-                },
-            });
-        }
+        // Si no se encontró ninguna ruta (ni backend ni gateway), devolver 404
+        return new Response(JSON.stringify({
+            error: 'Route not found',
+            path: url.pathname,
+            availableRoutes: Array.from(this.backends.values()).map(b => b.prefix),
+            gatewayRoutes: ['/gateway', '/gateway/login', '/gateway/logout', '/gateway/health', '/gateway/reload', '/gateway/backends', '/gateway/users'],
+        }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' },
+        });
     }
 }
 
