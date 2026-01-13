@@ -1,10 +1,10 @@
 # 📦 Archivos de Datos de Ejemplo
 
-Este directorio contiene archivos JSON de ejemplo utilizados por el **mock server** (`scripts/registry-server.ts`) para desarrollo local.
+Los archivos JSON de datos están ubicados en **`scripts/`** junto al mock server que los utiliza.
 
-## 📄 Archivos
+## 📄 Archivos en `scripts/`
 
-### `backends.json`
+### `scripts/backends.json`
 Ejemplo de backend registrado. Usado por el mock server para simular el KV Storage.
 
 ```json
@@ -19,7 +19,7 @@ Ejemplo de backend registrado. Usado por el mock server para simular el KV Stora
 }
 ```
 
-### `users.json`
+### `scripts/users.json`
 Ejemplos de usuarios registrados. Usado por el mock server.
 
 **Usuario incluido:**
@@ -28,13 +28,25 @@ Ejemplos de usuarios registrados. Usado por el mock server.
 - Hash: `JAvlGPq9JyTdtvBO6x2llnRI1+gxwIyPqCKAn3THIKk=`
 - Roles: `["admin"]`
 
-### `user-admin.json`
+### `scripts/user-admin.json`
 Formato alternativo del usuario admin para referencia.
 
-### `deno.json`
+### `deno.json` (en raíz del proyecto)
 ⚠️ **IMPORTANTE** - Este archivo SÍ se usa en producción.
 
 Contiene la configuración de Deno (tareas, imports, etc).
+
+## 🗂️ Estructura de Archivos
+
+```
+backend-gateway/
+├── scripts/
+│   ├── registry-server.ts   # Mock server
+│   ├── backends.json         # ← Datos de backends
+│   ├── users.json            # ← Datos de usuarios
+│   └── user-admin.json       # ← Usuario admin alternativo
+└── deno.json                 # Configuración de Deno (raíz)
+```
 
 ## 🎭 ¿Cuándo se usan?
 
@@ -93,14 +105,21 @@ El mock server agregará el backend a `backends.json`
 ## 🗑️ ¿Puedo Eliminarlos?
 
 ### NO elimines:
-- ✅ `deno.json` - **Requerido siempre**
+- ✅ `deno.json` (raíz) - **Requerido siempre**
 
 ### Puedes eliminar si NO usas el mock server:
-- `backends.json`
-- `users.json`
-- `user-admin.json`
+- `scripts/backends.json`
+- `scripts/users.json`
+- `scripts/user-admin.json`
 
 **Pero se recomienda mantenerlos** como ejemplos para nuevos desarrolladores.
+
+## 🔍 Ventajas de Tenerlos en `scripts/`
+
+1. ✅ **Agrupación lógica**: Los datos están junto al código que los usa
+2. ✅ **Raíz limpia**: Solo configuración esencial en la raíz del proyecto
+3. ✅ **Claridad**: Evidente que son archivos de desarrollo/testing
+4. ✅ **Despliegue**: No se confunden con archivos de producción
 
 ## 📚 Más Información
 

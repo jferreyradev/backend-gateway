@@ -21,9 +21,9 @@
  *   - REGISTRY_PORT: Puerto del servidor mock (default: 8001)
  *   - API_KEY: API Key de autenticación (default: desarrollo-api-key-2026)
  * 
- * Archivos de datos:
- *   - backends.json: Mock de colección de backends
- *   - users.json: Mock de colección de usuarios
+ * Archivos de datos (en scripts/):
+ *   - scripts/backends.json: Mock de colección de backends
+ *   - scripts/users.json: Mock de colección de usuarios
  * 
  * Endpoints simulados (compatible con KV Storage API):
  *   POST   /collections/backend        - Crear backend
@@ -37,10 +37,13 @@
  *   DELETE /collections/users          - Eliminar usuario (con ?key=)
  */
 
+import { dirname, join } from "https://deno.land/std@0.210.0/path/mod.ts";
+
 const PORT = parseInt(Deno.env.get('REGISTRY_PORT') || '8001');
 const API_KEY = Deno.env.get('API_KEY') || 'desarrollo-api-key-2026';
-const BACKENDS_FILE = 'backends.json';
-const USERS_FILE = 'users.json';
+const SCRIPT_DIR = dirname(new URL(import.meta.url).pathname);
+const BACKENDS_FILE = join(SCRIPT_DIR, 'backends.json');
+const USERS_FILE = join(SCRIPT_DIR, 'users.json');
 
 // Cargar backends del archivo
 function loadBackends(): Record<string, unknown> {
