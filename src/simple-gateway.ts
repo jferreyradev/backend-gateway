@@ -17,7 +17,6 @@
 const PORT = parseInt(Deno.env.get('PORT') || '8080');
 const BACKENDS_REGISTRY_URL = Deno.env.get('BACKENDS_REGISTRY_URL') || 'https://kv-storage-api.deno.dev';
 const API_KEY = Deno.env.get('API_KEY') || 'desarrollo-api-key-2026';
-const CACHE_TTL = parseInt(Deno.env.get('CACHE_TTL_MS') || '30000');
 const TOKEN_TTL = parseInt(Deno.env.get('TOKEN_TTL_MS') || '3600000'); // 1 hora
 const ENCRYPTION_KEY = Deno.env.get('ENCRYPTION_KEY') || 'go-oracle-api-secure-key-2026';
 
@@ -36,14 +35,13 @@ interface AuthToken {
 
 class SimpleGateway {
     private backends: Map<string, Backend> = new Map();
-    private lastRefresh = 0;
     private tokens: Map<string, AuthToken> = new Map();
     private isInitialized = false;
 
     async initialize(): Promise<void> {
         if (this.isInitialized) return;
         console.log('🔄 Inicializando gateway y cargando backends...');
-        await this.refreshBackends();
+        await this.loadBackends();
         this.isInitialized = true;
     }
 
@@ -201,12 +199,9 @@ class SimpleGateway {
         return false;
     }
 
-    async refreshBackends(force = false): Promise<void> {
-        const now = Date.now();
-        if (!force && now - this.lastRefresh < CACHE_TTL) return;
-
+    async loadBackends(): Promise<void> {
         try {
-            console.log('🔄 Actualizando backends...');
+            console.log('🔄 Cargando backends desde KV storage...');
             
             const response = await fetch(`${BACKENDS_REGISTRY_URL}/collections/backend`, {
                 headers: {
@@ -248,10 +243,9 @@ class SimpleGateway {
                 }
             }
 
-            this.lastRefresh = now;
             console.log(`✅ ${this.backends.size} backends cargados\n`);
         } catch (error) {
-            console.error('❌ Error actualizando backends:', error);
+            console.error('❌ Error cargando backends:', error);
         }
     }
 
@@ -372,6 +366,26 @@ class SimpleGateway {
             });
         }
 
+        // Endpoint para forzar recarga de backends (sin autenticación para facilitar pruebas)
+        if (url.pathname === '/gateway/reload' && req.method === 'POST') {
+            console.log('🔄 Recarga manual de backends solicitada...');
+            await this.loadBackends();
+            return new Response(JSON.stringify({ 
+                message: 'Backends reloaded',
+                backends: this.backends.size,
+                routes: Array.from(this.backends.values()).map(b => ({
+                    name: b.name,
+                    prefix: b.prefix,
+                    url: b.url,
+                })),
+            }), {
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                },
+            });
+        }
+
         // Inicializar gateway si es la primera petición
         if (!this.isInitialized) {
             await this.initialize();
@@ -392,9 +406,6 @@ class SimpleGateway {
                 },
             });
         }
-
-        // Actualizar backends
-        await this.refreshBackends();
 
         // Info del gateway
         if (url.pathname === '/' || url.pathname === '/gateway') {
@@ -443,7 +454,7 @@ class SimpleGateway {
         // Si no se encuentra, intentar recargar backends y buscar nuevamente
         if (!backend) {
             console.log(`⚠️  Backend no encontrado para ${url.pathname}, recargando...`);
-            await this.refreshBackends(true);
+            await this.loadBackends();
             backend = this.findBackend(url.pathname);
         }
 
