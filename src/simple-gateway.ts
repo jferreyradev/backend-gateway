@@ -38,6 +38,14 @@ class SimpleGateway {
     private backends: Map<string, Backend> = new Map();
     private lastRefresh = 0;
     private tokens: Map<string, AuthToken> = new Map();
+    private isInitialized = false;
+
+    async initialize(): Promise<void> {
+        if (this.isInitialized) return;
+        console.log('🔄 Inicializando gateway y cargando backends...');
+        await this.refreshBackends();
+        this.isInitialized = true;
+    }
 
     private async decryptToken(encryptedToken: string): Promise<string> {
         try {
@@ -193,9 +201,9 @@ class SimpleGateway {
         return false;
     }
 
-    async refreshBackends(): Promise<void> {
+    async refreshBackends(force = false): Promise<void> {
         const now = Date.now();
-        if (now - this.lastRefresh < CACHE_TTL) return;
+        if (!force && now - this.lastRefresh < CACHE_TTL) return;
 
         try {
             console.log('🔄 Actualizando backends...');
@@ -364,6 +372,11 @@ class SimpleGateway {
             });
         }
 
+        // Inicializar gateway si es la primera petición
+        if (!this.isInitialized) {
+            await this.initialize();
+        }
+
         // Validar token para todas las demás rutas
         const authHeader = req.headers.get('Authorization');
         if (!this.validateToken(authHeader)) {
@@ -425,7 +438,14 @@ class SimpleGateway {
         }
 
         // Buscar backend
-        const backend = this.findBackend(url.pathname);
+        let backend = this.findBackend(url.pathname);
+
+        // Si no se encuentra, intentar recargar backends y buscar nuevamente
+        if (!backend) {
+            console.log(`⚠️  Backend no encontrado para ${url.pathname}, recargando...`);
+            await this.refreshBackends(true);
+            backend = this.findBackend(url.pathname);
+        }
 
         if (!backend) {
             return new Response(JSON.stringify({
