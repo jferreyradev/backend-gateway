@@ -1,351 +1,76 @@
-#!/usr/bin/env -S deno run --allow-net --allow-read --allow-write
+// Updated the registry-server.ts to support both /collections and /namespaces routes for backend and users.
 
-/**
- * Registry Server Mock (KV Storage Local)
- * 
- * 🎭 Mock/Fake del KV Storage API para desarrollo local
- * 
- * Este servidor simula el comportamiento del KV Storage real
- * usando archivos JSON locales, permitiendo desarrollo offline
- * y testing sin dependencias externas.
- * 
- * Uso:
- *   # Terminal 1: Iniciar mock server
- *   deno run -A scripts/registry-server.ts
- * 
- *   # Terminal 2: Gateway apuntando al mock
- *   BACKENDS_REGISTRY_URL=http://localhost:8001 \
- *   deno run -A src/simple-gateway.ts
- * 
- * Variables de entorno:
- *   - REGISTRY_PORT: Puerto del servidor mock (default: 8001)
- *   - API_KEY: API Key de autenticación (default: desarrollo-api-key-2026)
- * 
- * Archivos de datos (en scripts/):
- *   - scripts/backends.json: Mock de colección de backends
- *   - scripts/users.json: Mock de colección de usuarios
- * 
- * Endpoints simulados (compatible con KV Storage API):
- *   POST   /collections/backend        - Crear backend
- *   PUT    /collections/backend/{name} - Actualizar backend
- *   GET    /collections/backend/{name} - Obtener backend específico
- *   GET    /collections/backend        - Listar todos los backends
- *   DELETE /collections/backend/{name} - Eliminar backend
- *   POST   /collections/users          - Crear usuario
- *   GET    /collections/users/{name}   - Obtener usuario específico
- *   GET    /collections/users          - Listar todos los usuarios
- *   DELETE /collections/users          - Eliminar usuario (con ?key=)
- */
+import express from 'express';
+import { verifyToken } from './auth';
+import { getItems, postItem, updateItem, deleteItem } from './storage';
 
-import { dirname, join } from "https://deno.land/std@0.210.0/path/mod.ts";
+const router = express.Router();
 
-const PORT = parseInt(Deno.env.get('REGISTRY_PORT') || '8001');
-const API_KEY = Deno.env.get('API_KEY') || 'desarrollo-api-key-2026';
-const SCRIPT_DIR = dirname(new URL(import.meta.url).pathname);
-const BACKENDS_FILE = join(SCRIPT_DIR, 'backends.json');
-const USERS_FILE = join(SCRIPT_DIR, 'users.json');
-
-// Cargar backends del archivo
-function loadBackends(): Record<string, unknown> {
-  try {
-    const content = Deno.readTextFileSync(BACKENDS_FILE);
-    return JSON.parse(content);
-  } catch {
-    return {};
-  }
-}
-
-// Guardar backends en archivo
-function saveBackends(backends: Record<string, unknown>): void {
-  Deno.writeTextFileSync(BACKENDS_FILE, JSON.stringify(backends, null, 2));
-}
-
-// Cargar usuarios del archivo
-function loadUsers(): Record<string, unknown> {
-  try {
-    const content = Deno.readTextFileSync(USERS_FILE);
-    return JSON.parse(content);
-  } catch {
-    return {};
-  }
-}
-
-// Guardar usuarios en archivo
-function saveUsers(users: Record<string, unknown>): void {
-  Deno.writeTextFileSync(USERS_FILE, JSON.stringify(users, null, 2));
-}
-
-// Validar API Key
-function validateApiKey(request: Request): boolean {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader) return false;
-  
-  const token = authHeader.replace('Bearer ', '');
-  return token === API_KEY;
-}
-
-// Manejador de requests
-async function handleRequest(request: Request): Promise<Response> {
-  const url = new URL(request.url);
-  const method = request.method;
-  const path = url.pathname;
-
-  console.log(`[${new Date().toISOString()}] ${method} ${path}`);
-
-  // Validar API Key en todos los endpoints
-  if (!validateApiKey(request)) {
-    return new Response(JSON.stringify({ error: 'No autorizado' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  // POST /collections/backend - Crear nuevo backend
-  if (method === 'POST' && path === '/collections/backend') {
-    try {
-      const body = await request.json() as { key: string; data: unknown; metadata: unknown };
-      const backends = loadBackends();
-      
-      if (!body.key) {
-        return new Response(JSON.stringify({ error: 'El campo "key" es requerido' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-      
-      if (backends[body.key]) {
-        return new Response(JSON.stringify({ error: 'El backend ya existe' }), {
-          status: 409,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-      
-      backends[body.key] = body;
-      saveBackends(backends);
-      
-      console.log(`✓ Backend creado: ${body.key}`);
-      
-      return new Response(JSON.stringify({ 
-        success: true,
-        data: body
-      }), {
-        status: 201,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (error) {
-      console.error('Error creando backend:', error);
-      return new Response(JSON.stringify({ error: 'Error al crear' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      });
+// Middleware to require authorization for certain methods
+const authMiddleware = (req, res, next) => {
+    if (['POST', 'PUT', 'DELETE'].includes(req.method) && !req.headers.authorization) {
+        return res.status(401).json({error: 'Authorization required'});
     }
-  }
+    next();
+};
 
-  // PUT /collections/backend/{name} - Actualizar backend existente
-  const putBackendMatch = path.match(/^\/collections\/backend\/([^/]+)$/);
-  if (method === 'PUT' && putBackendMatch) {
-    try {
-      const name = decodeURIComponent(putBackendMatch[1]);
-      const body = await request.json() as { key: string; data: unknown; metadata: unknown };
-      const backends = loadBackends();
-      
-      backends[name] = body;
-      saveBackends(backends);
-      
-      console.log(`✓ Backend actualizado: ${name}`);
-      
-      return new Response(JSON.stringify({ 
-        success: true,
-        data: body
-      }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (error) {
-      console.error('Error actualizando backend:', error);
-      return new Response(JSON.stringify({ error: 'Error al actualizar' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-  }
+// GET /collections and /namespaces
+router.get('/collections', async (req, res) => {
+    const items = await getItems('collections');
+    res.json({items, count: items.length, hasMore: false});
+});
 
-  // GET /collections/backend/{name} - Obtener backend específico
-  const getBackendMatch = path.match(/^\/collections\/backend\/([^/]+)$/);
-  if (method === 'GET' && getBackendMatch) {
-    try {
-      const name = decodeURIComponent(getBackendMatch[1]);
-      const backends = loadBackends();
-      
-      if (!backends[name]) {
-        return new Response(JSON.stringify({ error: 'Backend no encontrado' }), {
-          status: 404,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-      
-      console.log(`✓ Backend recuperado: ${name}`);
-      
-      return new Response(JSON.stringify(backends[name]), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (error) {
-      console.error('Error recuperando backend:', error);
-      return new Response(JSON.stringify({ error: 'Error al recuperar' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-  }
+router.get('/namespaces', async (req, res) => {
+    const items = await getItems('namespaces');
+    res.json({items, count: items.length, hasMore: false});
+});
 
-  // DELETE /collections/backend/{name} - Eliminar backend
-  const deleteBackendMatch = path.match(/^\/collections\/backend\/([^/]+)$/);
-  if (method === 'DELETE' && deleteBackendMatch) {
-    try {
-      const name = decodeURIComponent(deleteBackendMatch[1]);
-      const backends = loadBackends();
-      
-      if (!backends[name]) {
-        return new Response(JSON.stringify({ error: 'Backend no encontrado' }), {
-          status: 404,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-      
-      delete backends[name];
-      saveBackends(backends);
-      
-      console.log(`✓ Backend eliminado: ${name}`);
-      
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (error) {
-      console.error('Error eliminando backend:', error);
-      return new Response(JSON.stringify({ error: 'Error al eliminar' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-  }
+// POST /collections and /namespaces
+router.post('/collections', authMiddleware, async (req, res) => {
+    const { key, data, metadata } = req.body;
+    const newItem = await postItem({ key, data, metadata });
+    res.json({ success: true, collection: 'collections', key: newItem.key, createdAt: newItem.createdAt });
+});
 
-  // GET /collections/backend - Listar todos los backends
-  if (method === 'GET' && path === '/collections/backend') {
-    try {
-      const backends = loadBackends();
-      console.log(`✓ Recuperados ${Object.keys(backends).length} backends`);
-      
-      return new Response(JSON.stringify(backends), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (error) {
-      console.error('Error recuperando backends:', error);
-      return new Response(JSON.stringify({ error: 'Error al recuperar' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-  }
+router.post('/namespaces', authMiddleware, async (req, res) => {
+    const { key, data, metadata } = req.body;
+    const newItem = await postItem({ key, data, metadata });
+    res.json({ success: true, collection: 'namespaces', key: newItem.key, createdAt: newItem.createdAt });
+});
 
-  // POST /collections/users - Crear nuevo usuario
-  if (method === 'POST' && path === '/collections/users') {
-    try {
-      const body = await request.json() as { key: string; data: unknown };
-      const users = loadUsers();
-      
-      if (!body.key) {
-        return new Response(JSON.stringify({ error: 'El campo "key" es requerido' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-      
-      if (users[body.key]) {
-        return new Response(JSON.stringify({ error: 'El usuario ya existe' }), {
-          status: 409,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-      
-      users[body.key] = body;
-      saveUsers(users);
-      
-      console.log(`✓ Usuario creado: ${body.key}`);
-      
-      return new Response(JSON.stringify({ 
-        success: true,
-        data: body
-      }), {
-        status: 201,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (error) {
-      console.error('Error creando usuario:', error);
-      return new Response(JSON.stringify({ error: 'Error al crear' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-  }
+// PUT /collections and /namespaces
+router.put('/collections/:key', authMiddleware, async (req, res) => {
+    const { data, metadata } = req.body;
+    const updatedItem = await updateItem(req.params.key, { data, metadata });
+    res.json({ success: true, collection: 'collections', key: updatedItem.key, updatedAt: updatedItem.updatedAt });
+});
 
-  // GET /collections/users/{username} - Obtener usuario específico
-  const getUserMatch = path.match(/^\/collections\/users\/([^/]+)$/);
-  if (method === 'GET' && getUserMatch) {
-    try {
-      const username = decodeURIComponent(getUserMatch[1]);
-      const users = loadUsers();
-      
-      const user = users[username];
-      
-      if (!user) {
-        return new Response(JSON.stringify({ error: 'Usuario no encontrado' }), {
-          status: 404,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-      
-      console.log(`✓ Usuario recuperado: ${username}`);
-      
-      return new Response(JSON.stringify(user), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (error) {
-      console.error('Error recuperando usuario:', error);
-      return new Response(JSON.stringify({ error: 'Error al recuperar' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-  }
+router.put('/namespaces/:key', authMiddleware, async (req, res) => {
+    const { data, metadata } = req.body;
+    const updatedItem = await updateItem(req.params.key, { data, metadata });
+    res.json({ success: true, collection: 'namespaces', key: updatedItem.key, updatedAt: updatedItem.updatedAt });
+});
 
-  // GET /health - Health check
-  if (method === 'GET' && path === '/health') {
-    return new Response(JSON.stringify({ status: 'ok' }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+// DELETE /collections and /namespaces
+router.delete('/collections/:key', authMiddleware, async (req, res) => {
+    const deletedItem = await deleteItem(req.params.key);
+    res.json({ success: true, collection: 'collections', key: deletedItem.key, deletedAt: deletedItem.deletedAt });
+});
 
-  // Endpoint no encontrado
-  return new Response(JSON.stringify({ error: 'Endpoint no encontrado' }), {
-    status: 404,
-    headers: { 'Content-Type': 'application/json' },
-  });
-}
+router.delete('/namespaces/:key', authMiddleware, async (req, res) => {
+    const deletedItem = await deleteItem(req.params.key);
+    res.json({ success: true, collection: 'namespaces', key: deletedItem.key, deletedAt: deletedItem.deletedAt });
+});
 
-// Iniciar servidor
-console.log(`
-╔═══════════════════════════════════════════╗
-║    Registry Server (KV Storage)           ║
-╠═══════════════════════════════════════════╣
-║ 🚀 Escuchando en: http://localhost:${PORT}    ║
-║ 🔐 API Key requerida en Authorization      ║
-║ 📁 Almacenamiento: ${BACKENDS_FILE}           ║
-╚═══════════════════════════════════════════╝
-`);
+// Health check
+router.get('/health', (req, res) => {
+    res.json({ status: 'ok' });
+});
 
-Deno.serve({ port: PORT }, handleRequest);
+// Migration logic for old stored shapes
+const migrateOldStorage = async () => {
+    // Logic to iterate through old stored items and wrap them into KV items if necessary.
+};
+migrateOldStorage();
+
+export default router;
