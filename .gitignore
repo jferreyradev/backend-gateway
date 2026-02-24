@@ -6,6 +6,11 @@ deno.lock
 .env
 .env.local
 
+# Scripts personalizados (guardar solo los .example)
+register-daemon.sh
+register-daemon.ps1
+register-daemon.bat
+
 # Logs
 *.log
 

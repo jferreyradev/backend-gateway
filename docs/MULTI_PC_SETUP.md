@@ -28,8 +28,12 @@ PC 3 (IP dinámica C)        │
 
 ### En PC 1 (Productos)
 
-1. Edita `start-daemon.bat`:
-```batch
+1. Copia y edita el script de ejemplo:
+```bash
+# Windows
+copy register-daemon.example.bat register-daemon.bat
+
+# Editar register-daemon.bat:
 set STORAGE_URL=https://tu-kv-storage.deno.dev
 set API_KEY=clave-compartida-todas-las-pcs
 set ENCRYPTION_KEY=clave-32-caracteres-compartida
@@ -45,50 +49,55 @@ set BACKEND_PREFIX=/productos
 
 3. Ejecuta:
 ```bash
-start-daemon.bat
+register-daemon.bat  # Windows
+bash register-daemon.sh  # Linux/Mac
 ```
 
 ### En PC 2 (Usuarios)
 
-1. Edita `start-daemon.bat`:
-```batch
-set STORAGE_URL=https://tu-kv-storage.deno.dev
-set API_KEY=clave-compartida-todas-las-pcs
-set ENCRYPTION_KEY=clave-32-caracteres-compartida
+1. Copia y edita el script de ejemplo:
+```bash
+# Linux/Mac
+cp register-daemon.example.sh register-daemon.sh
 
-set BACKEND_NAME=usuarios
-set BACKEND_PORT=4000
-set BACKEND_TOKEN=token-secreto-usuarios
-set BACKEND_PREFIX=/usuarios
+# Editar register-daemon.sh:
+export STORAGE_URL="https://tu-kv-storage.deno.dev"
+export API_KEY="clave-compartida-todas-las-pcs"
+export ENCRYPTION_KEY="clave-32-caracteres-compartida"
+
+BACKEND_NAME="usuarios"
+BACKEND_PORT="4000"
+BACKEND_TOKEN="token-secreto-usuarios"
+BACKEND_PREFIX="/usuarios"
 ```
 
 2. Port Forwarding: 4000 → PC interna:4000
 
 3. Ejecuta:
 ```bash
-start-daemon.bat
+bash register-daemon.sh
 ```
 
 ### En PC 3 (Inventario)
 
-1. Edita `start-daemon.bat`:
-```batch
-set STORAGE_URL=https://tu-kv-storage.deno.dev
-set API_KEY=clave-compartida-todas-las-pcs
-set ENCRYPTION_KEY=clave-32-caracteres-compartida
+1. Usa comando directo (sin archivos):
+```bash
+# Configurar variables
+export STORAGE_URL="https://tu-kv-storage.deno.dev"
+export API_KEY="clave-compartida-todas-las-pcs"
+export ENCRYPTION_KEY="clave-32-caracteres-compartida"
 
-set BACKEND_NAME=inventario
-set BACKEND_PORT=5000
-set BACKEND_TOKEN=token-secreto-inventario
-set BACKEND_PREFIX=/inventario
+# Ejecutar
+deno run -A scripts/register-backend-standalone.ts \
+  --name=inventario \
+  --use-public-ip \
+  --backend-port=5000 \
+  --backend-token=token-secreto-inventario \
+  --prefix=/inventario \
+  --daemon
 ```
 
 2. Port Forwarding: 5000 → PC interna:5000
-
-3. Ejecuta:
-```bash
-start-daemon.bat
-```
 
 ## Paso 2: Desplegar Gateway en Deno Deploy
 
@@ -120,10 +129,11 @@ curl https://tu-gateway.deno.dev/inventario/stock
 
 ## Cómo Funciona
 
-1. **Registro automático**: Cada 5 minutos, cada PC:
+1. **Verificación automática**: Cada 30 minutos, cada PC:
    - Detecta su IP pública actual usando api.ipify.org
-   - Registra en KV Storage: nombre → {ip pública, puerto, token, prefix}
-   - Si la IP cambió, actualiza el registro
+   - Compara con la IP registrada anteriormente
+   - Si cambió, registra en KV Storage: nombre → {ip pública, puerto, token, prefix}
+   - Si no cambió, no hace nada (ahorro de recursos)
 
 2. **Gateway en Deno Deploy**:
    - Recibe petición: `GET /productos/items`
@@ -134,7 +144,7 @@ curl https://tu-gateway.deno.dev/inventario/stock
 
 3. **Actualización dinámica**:
    - Si la IP de una PC cambia (reinicio del router, etc)
-   - El daemon la detecta en la siguiente iteración (máx 5 min)
+   - El daemon la detecta en la siguiente verificación (máx 30 min)
    - Actualiza KV Storage automáticamente
    - El gateway usa la nueva IP sin configuración manual
 
@@ -187,7 +197,7 @@ Para que el daemon se ejecute automáticamente al iniciar Windows:
 
 4. Acción:
    - Programa: `cmd.exe`
-   - Argumentos: `/c "cd /d D:\proyectos\backend-infrastructure\backend-gateway && start-daemon.bat"`
+   - Argumentos: `/c "cd /d D:\proyectos\backend-infrastructure\backend-gateway && register-daemon.bat"`
 
 5. Guarda la tarea
 
@@ -232,8 +242,8 @@ Deno.serve({ port: 3000 }, (req) => {
 
 ### Registro PC 1
 ```bash
-# start-daemon.bat configurado con BACKEND_NAME=productos
-start-daemon.bat
+# register-daemon.bat configurado con BACKEND_NAME=productos
+register-daemon.bat
 ```
 
 ### Gateway en Deno Deploy

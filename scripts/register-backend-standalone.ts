@@ -356,19 +356,49 @@ async function main(): Promise<void> {
   if (args.daemon) {
     console.log("");
     console.log("🔄 Modo daemon activado");
-    console.log("   Re-registro cada 5 minutos");
+    console.log("   Verificación de IP cada 30 minutos");
+    console.log("   Solo se registra si la IP cambia");
     console.log("   Presiona Ctrl+C para detener");
     console.log("");
 
-    // Re-registrar cada 5 minutos
+    // Guardar la última IP registrada
+    let lastRegisteredIP: string | null = null;
+    if (args["use-public-ip"]) {
+      try {
+        lastRegisteredIP = await getPublicIP();
+      } catch {
+        // Si falla, se registrará en el próximo intento
+      }
+    }
+
+    // Verificar cada 30 minutos
     setInterval(async () => {
       try {
-        console.log(`[${new Date().toISOString()}] 🔄 Re-registrando...`);
-        await doRegister();
+        console.log(`[${new Date().toISOString()}] 🔍 Verificando IP...`);
+        
+        // Si no usa IP pública, siempre registrar
+        if (!args["use-public-ip"]) {
+          console.log(`[${new Date().toISOString()}] 🔄 Re-registrando (IP estática)...`);
+          await doRegister();
+          return;
+        }
+
+        // Obtener IP actual
+        const currentIP = await getPublicIP();
+        
+        // Comparar con la última registrada
+        if (currentIP !== lastRegisteredIP) {
+          console.log(`[${new Date().toISOString()}] 🔄 IP cambió de ${lastRegisteredIP} a ${currentIP}`);
+          console.log(`[${new Date().toISOString()}] 📝 Registrando nueva IP...`);
+          await doRegister();
+          lastRegisteredIP = currentIP;
+        } else {
+          console.log(`[${new Date().toISOString()}] ✅ IP sin cambios (${currentIP})`);
+        }
       } catch (error) {
-        console.error(`[${new Date().toISOString()}] ❌ Error en re-registro:`, error);
+        console.error(`[${new Date().toISOString()}] ❌ Error en verificación:`, error);
       }
-    }, 5 * 60 * 1000);
+    }, 30 * 60 * 1000);
 
     // Mantener el proceso vivo
     await new Promise(() => {});

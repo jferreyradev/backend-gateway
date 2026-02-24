@@ -23,15 +23,17 @@
 - [x] `scripts/delete-backend.ts` - Eliminar backends
 
 **Scripts para PCs:**
-- [x] `start-daemon-minimal.bat` - Windows, descarga automática
-- [x] `start-daemon.bat` - Windows, con proyecto local
+- [x] `register-daemon.example.bat` - Windows CMD
+- [x] `register-daemon.example.ps1` - Windows PowerShell
+- [x] `register-daemon.example.sh` - Linux/Mac/WSL
+- [x] `scripts/register-backend-standalone.ts` - Multiplataforma con daemon
 
 ### 3. Documentación
 
 **Principal:**
 - [x] `README.md` - Actualizado con nuevas opciones
-- [x] `QUICKSTART.md` - Guía paso a paso
-- [x] `RESUMEN_EJECUTIVO.md` - Overview completo del proyecto
+- [x] `docs/QUICKSTART.md` - Guía paso a paso
+- [x] `docs/RESUMEN_EJECUTIVO.md` - Overview completo del proyecto
 
 **Guías específicas:**
 - [x] `docs/MINIMAL_INSTALL.md` - Instalación mínima (2 archivos)
@@ -55,10 +57,9 @@
 ### 5. URLs y Referencias
 
 **IMPORTANTE - Actualizar antes de publicar:**
-- [ ] **start-daemon-minimal.bat**: Cambiar `TU_USUARIO/TU_REPO` por tu repo real
+- [ ] **scripts/register-backend-standalone.ts**: Actualizar URLs de ejemplo en comentarios
 - [ ] **docs/MINIMAL_INSTALL.md**: Cambiar `TU_USUARIO/TU_REPO` por tu repo real
 - [ ] **docs/QUICK_INSTALL_PC.md**: Cambiar `TU_USUARIO/TU_REPO` por tu repo real
-- [ ] **register-backend-standalone.ts**: Actualizar URLs de ejemplo en comentarios
 
 **Búsqueda rápida:**
 ```bash
@@ -72,7 +73,7 @@ grep -r "raw.githubusercontent.com" .
 **Casos de uso verificados:**
 - [x] Registro con URL completa
 - [x] Registro con --use-public-ip
-- [x] Modo daemon (re-registro cada 5 min)
+- [x] Modo daemon (verificación cada 30 min, registra solo si IP cambia)
 - [x] Encriptación de tokens
 - [x] Gateway proxy a backends
 - [x] Autenticación con bearer tokens
@@ -109,13 +110,12 @@ backend-gateway/
 │   ├── simple-gateway.ts
 │   └── lib/ (6 módulos)
 ├── scripts/ (10 scripts funcionales)
-├── docs/ (7 guías)
-├── start-daemon-minimal.bat
-├── start-daemon.bat
-├── README.md
-├── QUICKSTART.md
-├── RESUMEN_EJECUTIVO.md
+├── docs/ (9 guías)
+├── register-daemon.example.bat
+├── register-daemon.example.ps1
+├── register-daemon.example.sh
 ├── setup-pc-daemon.md
+├── README.md
 ├── deno.json
 ├── .env.example
 └── backends-config.example.json
@@ -166,9 +166,8 @@ git push
 ### 5. Releases (Opcional)
 - [ ] Crear tag: `v2.0.0`
 - [ ] GitHub Release con changelog
-- [ ] Destacar archivos clave para descargar:
-  - `start-daemon-minimal.bat`
-  - `register-backend-standalone.ts`
+- [ ] Destacar script clave para descargar:
+  - `scripts/register-backend-standalone.ts`
 
 ## 📋 Checklist Rápido
 

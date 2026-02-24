@@ -4,42 +4,50 @@ Gateway API modular con autenticación y enrutamiento dinámico de backends.
 
 **Versión 2.0** - Arquitectura refactorizada y optimizada
 
-**📋 [Ver Resumen Ejecutivo del Proyecto →](RESUMEN_EJECUTIVO.md)**
-
 ---
 
-## ⚡ Inicio Rápido
+## 📚 Índice de Documentación
 
-### Opción A: Desarrollo Local
+### 🎯 ¿Qué quieres hacer?
 
-```bash
-# 1. Configurar variables
-$env:STORAGE_URL="https://kv-storage-api.deno.dev"
-$env:API_KEY="tu-api-key"
-$env:ENCRYPTION_KEY="clave-de-32-caracteres-minimo-segura"
+| Tu caso | Documentación |
+|---------|---------------|
+| **Entender el proyecto** | [docs/RESUMEN_EJECUTIVO.md](docs/RESUMEN_EJECUTIVO.md) |
+| **Empezar rápido (desarrollo)** | [docs/QUICKSTART.md](docs/QUICKSTART.md) |
+| **Registrar PCs remotas** | [docs/MINIMAL_INSTALL.md](docs/MINIMAL_INSTALL.md) |
+| **Configurar múltiples PCs** | [docs/MULTI_PC_SETUP.md](docs/MULTI_PC_SETUP.md) |
+| **Desplegar a producción** | [docs/DEPLOY_GATEWAY.md](docs/DEPLOY_GATEWAY.md) |
+| **Probar el gateway** | [docs/TESTING.md](docs/TESTING.md) |
 
-# 2. Registrar usuario y backend
-deno run -A scripts/register-user.ts --username admin --password admin123
-deno run -A scripts/register-backend.ts --name=prod --prefix=/api --backend-url=https://tu-api.com --backend-token=secret
+### 📖 Guías Detalladas
 
-# 3. Iniciar gateway
-deno task dev
-```
+<details>
+<summary><strong>🚀 Inicio Rápido</strong></summary>
 
-**📖 [Ver Guía Completa →](QUICKSTART.md)**
+- **[docs/QUICKSTART.md](docs/QUICKSTART.md)** - Guía completa paso a paso
+- **[docs/RESUMEN_EJECUTIVO.md](docs/RESUMEN_EJECUTIVO.md)** - Overview del proyecto y casos de uso
 
-### Opción B: PCs Remotas con IP Pública Dinámica
+</details>
 
-Para registrar APIs desde PCs con IP pública que puede cambiar:
+<details>
+<summary><strong>🖥️ PCs Remotas con IP Dinámica</strong></summary>
 
-```bash
-# Solo necesitas 2 archivos en cada PC
-# 1. Descarga start-daemon-minimal.bat
-# 2. Edita las credenciales
-# 3. Ejecuta (doble-click)
-```
+- **[docs/MINIMAL_INSTALL.md](docs/MINIMAL_INSTALL.md)** - Solo 2 archivos por PC
+- **[docs/MULTI_PC_SETUP.md](docs/MULTI_PC_SETUP.md)** - Ejemplo 3 PCs completo
+- **[setup-pc-daemon.md](setup-pc-daemon.md)** - Configuración daemon detallada
 
-**📖 [Ver Instalación Mínima para PCs →](docs/MINIMAL_INSTALL.md)**
+</details>
+
+<details>
+<summary><strong>🔧 Operaciones y Deploy</strong></summary>
+
+- **[docs/REGISTER_BACKENDS.md](docs/REGISTER_BACKENDS.md)** - 3 métodos de registro
+- **[docs/DEPLOY_GATEWAY.md](docs/DEPLOY_GATEWAY.md)** - Desplegar a Deno Deploy
+- **[docs/TESTING.md](docs/TESTING.md)** - Cómo probar
+
+</details>
+
+---
 
 ---
 
@@ -49,200 +57,162 @@ Para registrar APIs desde PCs con IP pública que puede cambiar:
 - 🔄 **Proxy HTTP** automático a backends
 - ⚡ **Caché inteligente** de backends
 - 🌐 **Enrutamiento dinámico** por prefijos
-- 🔒 **Encriptación** AES-GCM de tokens
-- 📊 **Monitoreo** y health checks
+- 🔒 **Encriptación AES-GCM** de tokens backend
+- 📊 **IP pública dinámica** con verificación cada 30 min
 - ☁️ **Deploy ready** para Deno Deploy
-- 🏗️ **Arquitectura modular** v2.0
+- 🏗️ **Arquitectura modular** TypeScript
 
 ---
 
-## 🎯 Uso Básico
+## ⚡ Inicio Rápido (3 comandos)
 
-### Login
+### Desarrollo Local
+
 ```bash
-curl -X POST http://localhost:8000/gateway/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}'
+# 1. Configurar variables (una sola vez)
+$env:STORAGE_URL="https://kv-storage-api.deno.dev"
+$env:API_KEY="tu-api-key"
+$env:ENCRYPTION_KEY="clave-de-32-caracteres-minimo-segura"
+
+# 2. Registrar backend
+deno run -A scripts/register-backend.ts --name=prod --prefix=/api --backend-url=https://tu-api.com --backend-token=secret
+
+# 3. Iniciar gateway
+deno task dev
 ```
 
-### Usar con Token
+**📖 [Guía paso a paso →](docs/QUICKSTART.md)**
+
+### PC Remota con IP Dinámica
+
 ```bash
-curl http://localhost:8000/api/users \
-  -H "Authorization: Bearer TU_TOKEN"
+# Opción 1: Ejecutar directamente (sin archivos locales)
+export STORAGE_URL=https://tu-kv.deno.dev
+export API_KEY=tu-api-key
+export ENCRYPTION_KEY=clave-32-caracteres
+
+deno run -A https://raw.githubusercontent.com/TU_USUARIO/TU_REPO/main/scripts/register-backend-standalone.ts \
+  --name=mi-pc --use-public-ip --backend-port=3000 \
+  --backend-token=secret --daemon
+
+# Opción 2: Usar archivos de ejemplo
+cp register-daemon.example.sh register-daemon.sh  # Linux/Mac
+copy register-daemon.example.bat register-daemon.bat  # Windows
+# Editar variables y ejecutar
 ```
 
-### Health Check
-```bash
-curl http://localhost:8000/gateway/health
-```
+**📖 [Instalación mínima →](docs/MINIMAL_INSTALL.md)**
 
 ---
 
-## 📁 Estructura v2.0
-
-```
-src/
-├── simple-gateway.ts       # 🚀 Gateway principal (272 líneas)
-└── lib/                    # 📚 Módulos
-    ├── types.ts           # Interfaces TypeScript
-    ├── config.ts          # Configuración centralizada
-    ├── crypto.ts          # Encriptación AES-GCM
-    ├── auth.ts            # Autenticación y tokens
-    ├── backends.ts        # Gestión de backends
-    └── middleware.ts      # CORS, headers, HTTP
-
-scripts/                    # 🛠️ Utilidades
-├── register-backend.ts    # Registrar backends
-├── register-user.ts       # Gestionar usuarios
-├── delete-backend.ts      # Eliminar backends
-└── test-*.ts              # Tests
-
-docs/                       # 📚 Documentación
-└── *.md                   # Guías detalladas
-```
-
----
-
-## 📚 Documentación
-
-### 🚀 Para Empezar
-- **[QUICKSTART.md](QUICKSTART.md)** - Guía completa paso a paso
-- **[MINIMAL_INSTALL.md](docs/MINIMAL_INSTALL.md)** - Instalación mínima para PCs remotas (2 archivos)
-
-### 🖥️ Configuración de PCs Remotas
-- **[MULTI_PC_SETUP.md](docs/MULTI_PC_SETUP.md)** - Configurar múltiples PCs con IP dinámica
-- **[setup-pc-daemon.md](setup-pc-daemon.md)** - Daemon para registro automático
-
-### 🔧 Operaciones
-- **[REGISTER_BACKENDS.md](docs/REGISTER_BACKENDS.md)** - Cómo registrar backends (3 métodos)
-- **[DEPLOY_GATEWAY.md](docs/DEPLOY_GATEWAY.md)** - Desplegar a Deno Deploy
-- **[TESTING.md](docs/TESTING.md)** - Cómo probar el gateway
-
-### 📦 Scripts Disponibles
-
-**Para desarrollo local:**
-```bash
-deno task dev              # Iniciar gateway en modo desarrollo
-deno task check-backends   # Listar backends registrados
-```
-
-**Para registrar backends:**
-```bash
-# Método 1: Simple (pocos argumentos)
-deno task register:simple nombre url token [prefix] [port]
-
-# Método 2: Bulk (desde JSON)
-deno task register:bulk
-
-# Método 3: Completo (con daemon)
-deno run -A scripts/register-backend.ts --name=... --daemon
-```
-
-**Para PCs remotas:**
-- Descarga `start-daemon-minimal.bat` (Windows)
-- O usa `register-backend-standalone.ts` (multiplataforma)
-
----
-
-## 🔑 Variables de Entorno
+## 🔑 Variables de Entorno (3 obligatorias)
 
 | Variable | Descripción | Requerido |
 |----------|-------------|-----------|
 | `STORAGE_URL` | URL del KV Storage | ✅ |
 | `API_KEY` | API Key del KV Storage | ✅ |
-| `ENCRYPTION_KEY` | Clave encriptación (32+ chars) | ✅ |
-| `PORT` | Puerto del gateway (default: 8080) | ❌ |
-| `TOKEN_TTL_MS` | TTL tokens (default: 3600000) | ❌ |
-| `ALLOWED_ORIGINS` | CORS origins (default: *) | ❌ |
+| `ENCRYPTION_KEY` | Encriptación AES-GCM (32+ chars) | ✅ |
+| `PORT` | Puerto (default: 8080, ignorado en Deno Deploy) | ❌ |
+| `TOKEN_TTL_MS` | TTL tokens usuario (default: 1h) | ❌ |
+| `ALLOWED_ORIGINS` | CORS (default: *) | ❌ |
 
-Ver [.env.example](.env.example) para más opciones.
+<details>
+<summary><strong>🔐 ¿Para qué sirve ENCRYPTION_KEY?</strong></summary>
+
+Los tokens de backends se almacenan **encriptados** (AES-GCM 256-bit) en el KV Storage:
+
+```
+PC → Encripta token → KV Storage
+Gateway ← Desencripta token ← KV Storage → Envía a API backend
+```
+
+⚠️ **Debe ser idéntica** en todas las PCs que registran backends y en el gateway.
+
+**[Más detalles →](docs/DEPLOY_GATEWAY.md)**
+
+</details>
+
+---
+
+## 📦 Scripts Disponibles
+
+```bash
+# Desarrollo
+deno task dev                    # Iniciar gateway
+deno task check-backends         # Listar backends registrados
+
+# Registro (3 métodos)
+deno task register:simple nombre url token [prefix]   # Rápido
+deno task register:bulk                                # Masivo (JSON)
+deno run -A scripts/register-backend.ts --daemon       # Con daemon
+```
+
+**📖 [Ver todos los métodos →](docs/REGISTER_BACKENDS.md)**
+
+---
 
 ---
 
 ## 🧪 Testing
 
 ```bash
-# Test completo
-deno run -A scripts/test-general.ts
-
-# Tests específicos  
-deno run -A scripts/test-auth.ts       # Autenticación
-deno run -A scripts/test-gateway.ts    # Gateway/Proxy
-
-# Ver backends
-deno run -A scripts/check-backends.ts
+deno run -A scripts/test-general.ts     # Test completo
+deno run -A scripts/check-backends.ts   # Ver backends registrados
 ```
+
+**📖 [Guía de testing →](docs/TESTING.md)**
 
 ---
 
-## 🚀 Deploy
-
-### Deno Deploy (Recomendado)
+## 🚀 Deploy a Producción
 
 ```bash
-# 1. Push a GitHub
-git push origin main
-
-# 2. Conectar en dash.deno.com
-# 3. Configurar variables de entorno
-# 4. ¡Listo!
+# Deno Deploy (recomendado)
+1. Push a GitHub
+2. Conectar en dash.deno.com
+3. Configurar las 3 variables obligatorias
+4. ¡Deploy automático!
 ```
 
-### Servidor Propio
-
-```bash
-deno task start
-```
-
-**📖 [Guía de Deploy Completa →](docs/DEPLOY_GATEWAY.md)**
+**📖 [Guía completa de deploy →](docs/DEPLOY_GATEWAY.md)**
 
 ---
 
-## 📡 Endpoints
+## 📡 Endpoints del Gateway
 
-### Públicos (sin autenticación)
+### Públicos
 - `GET /gateway/health` - Health check
 - `POST /gateway/login` - Autenticación
-- `GET /gateway/backends` - Ver backends
-- `POST /gateway/reload` - Recargar backends
 
-### Protegidos (requieren token)
-- `GET /gateway` - Info del gateway
-- `POST /gateway/logout` - Cerrar sesión
-
-### Proxy (sin autenticación del gateway)
-- Cualquier ruta que coincida con un prefijo de backend
+### Protegidos (requieren Bearer token)
+- `<PREFIX>/*` - Proxy a backends registrados
 
 ---
 
-## 📚 Documentación
+## 🏗️ Arquitectura
 
-- **[QUICKSTART.md](QUICKSTART.md)** - 🚀 Guía completa de inicio
-- **[docs/REGISTER_BACKENDS.md](docs/REGISTER_BACKENDS.md)** - 📝 Registro de backends
-- **[docs/DEPLOY_GATEWAY.md](docs/DEPLOY_GATEWAY.md)** - ☁️ Deploy en producción
-- **[docs/TESTING.md](docs/TESTING.md)** - 🧪 Testing
-- **[src/lib/README.md](src/lib/README.md)** - 📦 Arquitectura modular
-
----
-
-## ⚡ Comandos Rápidos
-
-```bash
-# Desarrollo
-deno task dev                    # Iniciar gateway
-deno task registry               # Mock KV Storage (offline)
-
-# Gestión
-deno task register              # Registrar backend
-deno task register:user         # Registrar usuario
-deno task delete                # Eliminar backend
-deno task check                 # Ver backends
-
-# Testing
-deno task test                  # Test completo
-deno task test:auth             # Test autenticación
-deno task test:gateway          # Test gateway
 ```
+PCs Remotas                Gateway (Deno Deploy)        Clientes
+━━━━━━━━━━━━━━━           ━━━━━━━━━━━━━━━━━━━━━        ━━━━━━━━
+PC 1: API :3000  ─┐                                   ┌─ Web App
+PC 2: API :4000  ─┼─► KV Storage ◄─► Gateway ◄──────┼─ Mobile
+PC 3: API :5000  ─┘     (registros)   (proxy)        └─ Otros
+```
+
+**[Ver resumen ejecutivo →](docs/RESUMEN_EJECUTIVO.md)**
+
+---
+
+## 📄 Licencia
+
+MIT
+
+---
+
+## 🤝 Contribuir
+
+Issues y PRs son bienvenidos. Ver [docs/CHECKLIST_PRE_PUBLICACION.md](docs/CHECKLIST_PRE_PUBLICACION.md) antes de contribuir.
+
 
 ---
 

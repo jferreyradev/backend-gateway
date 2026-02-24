@@ -24,7 +24,7 @@
  *   --backend-port: Puerto local (requerido con --use-public-ip)
  *   --use-public-ip: Detectar IP pública automáticamente
  *   --encryption-key: Clave de encriptación para tokens
- *   --daemon: Ejecutar en modo demonio (re-registra cada 5 minutos)
+ *   --daemon: Ejecutar en modo demonio (verifica cada 30 min, registra solo si IP cambia)
  * 
  * Variables de entorno:
  *   - BACKEND_NAME: Nombre del backend
@@ -61,7 +61,7 @@ const CONFIG = {
     backendPort: args['backend-port'] || Deno.env.get('PORT') || '',
 };
 
-const DAEMON_INTERVAL = 5 * 60 * 1000;
+const DAEMON_INTERVAL = 30 * 60 * 1000; // 30 minutos
 const isDaemon = Deno.args.includes('--daemon');
 const ENCRYPTION_KEY = args['encryption-key'] || Deno.env.get('ENCRYPTION_KEY') || 'go-oracle-api-secure-key-2026';
 
@@ -284,16 +284,53 @@ async function main() {
     validateConfig();
     
     if (isDaemon) {
-        console.log(`⏰ Modo daemon activado (cada ${DAEMON_INTERVAL / 1000 / 60} minutos)\n`);
+        console.log(`⏰ Modo daemon activado`);
+        console.log(`   Verificación cada ${DAEMON_INTERVAL / 1000 / 60} minutos`);
+        console.log(`   Solo registra si la IP cambia\n`);
+        
+        // Guardar la última IP registrada
+        let lastRegisteredIP: string | null = null;
+        
+        // Registro inicial
+        const initialSuccess = await registerBackend();
+        if (initialSuccess && CONFIG.usePublicIP) {
+            try {
+                lastRegisteredIP = await getPublicIP();
+            } catch {
+                // Si falla, se registrará en el próximo intento
+            }
+        }
         
         while (true) {
-            const success = await registerBackend();
-            if (success) {
-                console.log(`\n⏳ Próximo intento en ${DAEMON_INTERVAL / 1000 / 60} minutos...\n`);
-            } else {
-                console.log(`\n⏳ Reintentando en ${DAEMON_INTERVAL / 1000 / 60} minutos...\n`);
-            }
             await new Promise(resolve => setTimeout(resolve, DAEMON_INTERVAL));
+            
+            console.log(`[${new Date().toISOString()}] 🔍 Verificando IP...`);
+            
+            // Si no usa IP pública, siempre registrar
+            if (!CONFIG.usePublicIP) {
+                console.log(`[${new Date().toISOString()}] 🔄 Re-registrando (IP estática)...`);
+                await registerBackend();
+                continue;
+            }
+            
+            try {
+                // Obtener IP actual
+                const currentIP = await getPublicIP();
+                
+                // Comparar con la última registrada
+                if (currentIP !== lastRegisteredIP) {
+                    console.log(`[${new Date().toISOString()}] 🔄 IP cambió de ${lastRegisteredIP} a ${currentIP}`);
+                    console.log(`[${new Date().toISOString()}] 📏 Registrando nueva IP...`);
+                    const success = await registerBackend();
+                    if (success) {
+                        lastRegisteredIP = currentIP;
+                    }
+                } else {
+                    console.log(`[${new Date().toISOString()}] ✅ IP sin cambios (${currentIP})`);
+                }
+            } catch (error) {
+                console.error(`[${new Date().toISOString()}] ❌ Error en verificación:`, error);
+            }
         }
     } else {
         const success = await registerBackend();

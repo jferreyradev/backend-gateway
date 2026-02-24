@@ -32,6 +32,19 @@ API_KEY=tu-api-key-secreta
 ENCRYPTION_KEY=clave-de-32-caracteres-minimo
 ```
 
+#### 🔐 ¿Para qué sirven?
+
+- **STORAGE_URL**: URL del KV Storage donde se registran los backends
+- **API_KEY**: Autenticación para acceder al KV Storage
+- **ENCRYPTION_KEY**: Encripta/desencripta los tokens de los backends
+  - Los tokens se guardan encriptados en el KV Storage (AES-GCM 256-bit)
+  - El gateway los desencripta para enviarlos a las APIs backend
+  - **Debe ser idéntica** en todas las PCs y en el gateway
+
+⚠️ **Importante**: Las 3 variables deben ser **exactamente iguales** en:
+- Todas las PCs que registran backends
+- El gateway desplegado en Deno Deploy
+
 ✅ **¡Listo!** Gateway desplegado en `https://tu-proyecto.deno.dev`
 
 ---

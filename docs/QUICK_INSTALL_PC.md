@@ -39,33 +39,33 @@ deno run -A register-backend-standalone.ts `
 
 ✅ **Ventajas**: Script local, puedes editarlo, variables de entorno
 
-## Opción 3: Script .bat para Windows
+## Opción 3: Archivos de Ejemplo (Recomendado)
 
-Crea un archivo `register.bat`:
+El proyecto incluye scripts de ejemplo multiplataforma:
 
-```batch
-@echo off
-REM Descargar el script standalone
-curl -O https://raw.githubusercontent.com/TU_USUARIO/TU_REPO/main/scripts/register-backend-standalone.ts
+**Windows:**
+```cmd
+REM Copiar ejemplo
+copy register-daemon.example.bat register-daemon.bat
 
-REM Configurar y ejecutar
-deno run -A register-backend-standalone.ts ^
-  --registry-url=https://tu-kv-storage.deno.dev ^
-  --api-key=tu-api-key ^
-  --encryption-key=tu-clave-32-caracteres ^
-  --name=mi-pc ^
-  --use-public-ip ^
-  --backend-port=3000 ^
-  --backend-token=mi-token-secreto ^
-  --prefix=/mipc ^
-  --daemon
+REM Editar register-daemon.bat con las credenciales
 
-pause
+REM Ejecutar (doble-click o desde CMD)
+register-daemon.bat
 ```
 
-Ejecuta: `register.bat`
+**Linux/Mac:**
+```bash
+# Copiar ejemplo
+cp register-daemon.example.sh register-daemon.sh
 
-✅ **Ventajas**: Doble-click y listo, perfecto para usuarios no técnicos
+# Editar register-daemon.sh con las credenciales
+
+# Ejecutar
+bash register-daemon.sh
+```
+
+✅ **Ventajas**: Multiplataforma, fácil de editar, reutilizable
 
 ## Lo que NO necesitas en las PCs
 
@@ -121,7 +121,8 @@ deno run -A https://raw.githubusercontent.com/.../register-backend-standalone.ts
 ```
 
 ✅ El script detecta tu IP pública automáticamente  
-✅ Se registra cada 5 minutos  
+✅ Verifica IP cada 30 minutos  
+✅ Registra solo si cambió
 ✅ Si tu IP cambia, se actualiza automáticamente
 
 ## Ejemplo completo PC 2

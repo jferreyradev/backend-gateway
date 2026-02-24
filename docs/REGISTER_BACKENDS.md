@@ -111,7 +111,7 @@ deno task register \
   --prefix=/dev
 ```
 
-### Modo Daemon (re-registro automático cada 5 min)
+### Modo Daemon (verificación cada 30 min, registra solo si IP cambia)
 
 ```bash
 deno task register \

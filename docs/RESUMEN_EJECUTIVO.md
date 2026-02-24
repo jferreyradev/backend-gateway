@@ -35,8 +35,7 @@ Cada servicio se registra automáticamente, el gateway los enruta correctamente.
 - **src/lib/** - Módulos (auth, crypto, backends, etc)
 
 ### Para PCs Remotas (Mínimo)
-- **start-daemon-minimal.bat** - Script de inicio (editable)
-- **register-backend-standalone.ts** - Se descarga automático
+- **scripts/register-backend-standalone.ts** - Script multiplataforma con daemon
 
 ### Scripts de Utilidad
 - **register-backend.ts** - Versión completa con daemon
@@ -67,9 +66,9 @@ ENCRYPTION_KEY=clave-de-32-caracteres-minimo
 ### Paso 2: Registrar PCs Remotas
 ```bash
 # En cada PC
-1. Descarga start-daemon-minimal.bat
-2. Edita las 3 credenciales + datos de tu API
-3. Ejecuta (doble-click)
+1. Instala Deno
+2. Ejecuta register-backend-standalone.ts con credenciales
+3. Se mantiene corriendo (daemon mode)
 ```
 
 ### Paso 3: Usar el Gateway
@@ -84,7 +83,6 @@ curl https://tu-gateway.deno.dev/pagos/procesar
 
 | Método | Archivos | Ideal para |
 |--------|----------|------------|
-| **start-daemon-minimal.bat** | 2 | PCs Windows, usuarios no técnicos |
 | **register-backend-standalone.ts** | 1 | Multiplataforma, CLI |
 | **register-backend.ts** | Proyecto completo | Desarrollo, opciones avanzadas |
 | **register-backends-bulk.ts** | Proyecto completo | Registrar muchos backends |
@@ -92,7 +90,7 @@ curl https://tu-gateway.deno.dev/pagos/procesar
 ## ✅ Ventajas Clave
 
 1. **Un solo URL** para todas las APIs
-2. **IP dinámica manejada automáticamente** (se actualiza cada 5 min)
+2. **IP dinámica manejada automáticamente** (verifica cada 30 min)
 3. **Instalación mínima en PCs** (solo 2 archivos)
 4. **Sin hardcodear IPs** - todo dinámico
 5. **Autenticación centralizada** - un solo token
@@ -122,25 +120,26 @@ backend-gateway/
 │   └── delete-backend.ts              # Eliminar backends
 │
 ├── docs/
+│   ├── QUICKSTART.md                  # Inicio rápido
+│   ├── RESUMEN_EJECUTIVO.md           # Este archivo
 │   ├── MINIMAL_INSTALL.md             # Instalación mínima PCs
 │   ├── MULTI_PC_SETUP.md              # Setup múltiples PCs
-│   ├── QUICK_INSTALL_PC.md            # Instalación rápida
 │   ├── REGISTER_BACKENDS.md           # Guía de registro
 │   ├── DEPLOY_GATEWAY.md              # Deploy a producción
 │   └── TESTING.md                     # Tests
 │
-├── start-daemon-minimal.bat           # Script Windows (mínimo)
-├── start-daemon.bat                   # Script Windows (completo)
-├── README.md                          # Documentación principal
-├── QUICKSTART.md                      # Inicio rápido
+├── register-daemon.example.bat        # Script Windows CMD
+├── register-daemon.example.ps1        # Script Windows PowerShell
+├── register-daemon.example.sh         # Script Linux/Mac/WSL
 ├── setup-pc-daemon.md                 # Config daemon detallado
-└── RESUMEN_EJECUTIVO.md              # Este archivo
+├── README.md                          # Documentación principal
+└── .env.example                       # Configuración
 ```
 
 ## 🎯 ¿Por dónde empezar?
 
 ### Si desarrollas el gateway:
-👉 [README.md](README.md) → [QUICKSTART.md](QUICKSTART.md)
+👉 [README.md](../README.md) → [docs/QUICKSTART.md](QUICKSTART.md)
 
 ### Si solo necesitas registrar una PC:
 👉 [docs/MINIMAL_INSTALL.md](docs/MINIMAL_INSTALL.md)
@@ -175,7 +174,7 @@ https://empresa-gateway.deno.dev/inventario/... → Barcelona
 https://empresa-gateway.deno.dev/ventas/...     → Valencia
 ```
 
-Las IPs se actualizan automáticamente cada 5 minutos. Cero configuración manual.
+Las IPs se actualizan automáticamente si cambian (verificación cada 30 min). Cero configuración manual.
 
 ## 📈 Escalabilidad
 
@@ -210,7 +209,7 @@ Cada PC se registra independientemente. El gateway simplemente consulta el KV St
 ## 🎉 Resumen en 3 Líneas
 
 1. **Gateway unifica múltiples APIs** en un solo URL
-2. **PCs con IP dinámica** se registran automáticamente cada 5 min
+2. **PCs con IP dinámica** verifican cada 30 min, registran solo si cambia
 3. **Instalación mínima**: 2 archivos en cada PC, 3 variables de entorno
 
 ---

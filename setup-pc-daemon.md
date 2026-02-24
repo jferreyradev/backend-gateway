@@ -26,7 +26,7 @@ $env:ENCRYPTION_KEY="clave-de-32-caracteres-minimo"
 # 2. Iniciar tu API local
 # (tu aplicación en puerto 3000, 8080, etc.)
 
-# 3. Registrar con daemon (re-registra cada 5 minutos)
+# 3. Registrar con daemon (verifica cada 30 min, registra solo si IP cambia)
 deno run -A scripts/register-backend.ts \
   --name=pc-oficina \
   --use-public-ip \
@@ -57,7 +57,8 @@ deno run -A scripts/register-backend.ts \
 
 - ✅ Detecta tu IP pública actual
 - ✅ Registra: `http://TU_IP:PUERTO`
-- ✅ Re-registra cada **5 minutos** (por si cambia la IP)
+- ✅ Verifica IP cada **30 minutos**
+- ✅ Registra solo si la IP cambió (ahorro de recursos)
 - ✅ Mantiene el backend actualizado automáticamente
 
 ---
@@ -183,7 +184,7 @@ deno task check
 ### ⚠️ Consideraciones Importantes:
 
 1. **Firewall/Router**: Debes configurar port forwarding en tu router para el puerto de tu API
-2. **IP Dinámica**: El modo daemon re-registra cada 5 min, perfecto para IPs que cambian
+2. **IP Dinámica**: El modo daemon verifica cada 30 min, registra solo si la IP cambió
 3. **Tokens Seguros**: Usa tokens diferentes por PC
 4. **HTTPS**: El gateway en Deno Deploy usa HTTPS automáticamente
 
@@ -250,7 +251,9 @@ Verás en consola:
 ✅ IP pública detectada: 181.45.23.12
 📤 Registrando backend test-local...
 ✅ Registrado exitosamente
-🔄 Modo daemon activado - re-registrará cada 5 minutos
+🔄 Modo daemon activado
+   Verificación cada 30 minutos
+   Solo registra si la IP cambia
 ```
 
 ### 3. Prueba desde el gateway:
@@ -309,7 +312,8 @@ curl https://mi-gateway.deno.dev/test/endpoint
 
 ### IP cambia y no actualiza
 ✅ Verifica que el daemon esté corriendo  
-✅ Re-registra cada 5 minutos automáticamente  
+✅ Verifica IP cada 30 minutos automáticamente  
+✅ Registra solo si la IP cambió (eficiente)
 ✅ Revisa logs del script
 
 ---
