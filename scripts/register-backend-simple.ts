@@ -163,24 +163,64 @@ try {
     console.log('🔐 Encriptando token...');
     const encryptedToken = await encryptToken(token);
     
+    const timestamp = new Date().toISOString();
     const backendData = {
         name,
         url: finalUrl,
         token: encryptedToken,
         prefix,
-        registeredAt: new Date().toISOString(),
+    };
+    
+    const backendMetadata = {
+        registeredAt: timestamp,
+        lastUpdate: timestamp,
     };
     
     console.log('📤 Registrando backend...');
     
-    const response = await fetch(`${STORAGE_URL}/backend:${name}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${API_KEY}`,
-        },
-        body: JSON.stringify({ value: backendData }),
-    });
+    // Verificar si existe
+    let existsResponse;
+    try {
+        existsResponse = await fetch(`${STORAGE_URL}/collections/backend/${name}`, {
+            method: 'GET',
+            headers: { 
+                'Authorization': `Bearer ${API_KEY}`,
+            },
+        });
+    } catch {
+        existsResponse = { ok: false, status: 404 } as Response;
+    }
+    
+    let response;
+    
+    // Si existe, actualizar con PUT
+    if (existsResponse.ok) {
+        response = await fetch(`${STORAGE_URL}/collections/backend/${name}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${API_KEY}`,
+            },
+            body: JSON.stringify({
+                data: backendData,
+                metadata: backendMetadata,
+            }),
+        });
+    } else {
+        // Si no existe, crear con POST
+        response = await fetch(`${STORAGE_URL}/collections/backend`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${API_KEY}`,
+            },
+            body: JSON.stringify({
+                key: name,
+                data: backendData,
+                metadata: backendMetadata,
+            }),
+        });
+    }
     
     if (!response.ok) {
         const error = await response.text();

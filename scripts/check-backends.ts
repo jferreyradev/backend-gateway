@@ -19,8 +19,8 @@ console.log(' Listando Backends Registrados\n');
 console.log(` Storage: ${STORAGE_URL}\n`);
 
 try {
-    console.log(' GET /collections/backend');
-    const response = await fetch(`/collections/backend`, {
+    console.log('🔍 GET /collections/backend');
+    const response = await fetch(`${STORAGE_URL}/collections/backend`, {
         headers: {
             'Authorization': `Bearer ${API_KEY}`,
         }
@@ -31,22 +31,25 @@ try {
     }
     
     const data = await response.json();
-    console.log(` Status: ${response.status}\n`);
+    console.log(`✅ Status: ${response.status}\n`);
     
     if (data.items && data.items.length > 0) {
-        console.log(` Total backends: ${data.items.length}\n`);
+        console.log(`📦 Total backends: ${data.items.length}\n`);
         
         data.items.forEach((item: any, index: number) => {
-            console.log(`. `);
-            console.log(`   URL: `);
-            console.log(`   Prefix: `);
-            console.log(`   Registrado: \n`);
+            console.log(`${index + 1}. ${item.key}`);
+            console.log(`   URL: ${item.data.url}`);
+            console.log(`   Prefix: ${item.data.prefix}`);
+            console.log(`   Registrado: ${item.metadata?.registeredAt || item.createdAt}\n`);
         });
     } else {
-        console.log('  No hay backends registrados\n');
+        console.log('⚠️  No hay backends registrados\n');
     }
     
 } catch (error) {
-    console.error(' Error:', error.message);
+    console.error('❌ Error:', (error as Error).message);
     Deno.exit(1);
 }
+
+// Hacer que TypeScript reconozca este archivo como módulo
+export {};

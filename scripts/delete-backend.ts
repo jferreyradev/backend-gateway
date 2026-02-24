@@ -184,13 +184,14 @@ async function deleteBackend(): Promise<void> {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                key: CONFIG.name,
                 data: {
                     name: CONFIG.name,
                     url: '',
                     token: '',
                     prefix: '',
                     status: 'DELETED',
+                },
+                metadata: {
                     deletedAt: new Date().toISOString(),
                 },
             }),

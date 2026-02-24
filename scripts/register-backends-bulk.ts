@@ -106,24 +106,64 @@ async function registerBackend(
     const prefix = backend.prefix || `/${backend.name}`;
     const encryptedToken = await encryptToken(backend.token, encryptionKey);
     
+    const timestamp = new Date().toISOString();
     const backendData = {
         name: backend.name,
         url: finalUrl,
         token: encryptedToken,
         prefix: prefix,
-        registeredAt: new Date().toISOString(),
+    };
+    
+    const backendMetadata = {
+        registeredAt: timestamp,
+        lastUpdate: timestamp,
     };
     
     console.log(`📤 Registrando ${backend.name} (${prefix} → ${finalUrl})...`);
     
-    const response = await fetch(`${storageUrl}/backend:${backend.name}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({ value: backendData }),
-    });
+    // Verificar si existe
+    let existsResponse;
+    try {
+        existsResponse = await fetch(`${storageUrl}/collections/backend/${backend.name}`, {
+            method: 'GET',
+            headers: { 
+                'Authorization': `Bearer ${apiKey}`,
+            },
+        });
+    } catch {
+        existsResponse = { ok: false, status: 404 } as Response;
+    }
+    
+    let response;
+    
+    // Si existe, actualizar con PUT
+    if (existsResponse.ok) {
+        response = await fetch(`${storageUrl}/collections/backend/${backend.name}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                data: backendData,
+                metadata: backendMetadata,
+            }),
+        });
+    } else {
+        // Si no existe, crear con POST
+        response = await fetch(`${storageUrl}/collections/backend`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                key: backend.name,
+                data: backendData,
+                metadata: backendMetadata,
+            }),
+        });
+    }
     
     if (!response.ok) {
         throw new Error(`Error ${response.status}: ${await response.text()}`);

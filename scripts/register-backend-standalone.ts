@@ -103,17 +103,6 @@ async function getPublicIP(): Promise<string> {
 // REGISTRO EN KV STORAGE
 // ============================================================================
 
-interface BackendData {
-  url: string;
-  token: string;
-  prefix?: string;
-  metadata?: {
-    registered_at: string;
-    last_update: string;
-    [key: string]: unknown;
-  };
-}
-
 async function registerBackend(
   name: string,
   url: string,
@@ -126,25 +115,64 @@ async function registerBackend(
 ): Promise<void> {
   const encryptedToken = await encryptToken(token, encryptionKey);
 
-  const backendData: BackendData = {
+  const timestamp = new Date().toISOString();
+  
+  const backendData = {
+    name,
     url,
     token: encryptedToken,
-    prefix,
-    metadata: {
-      registered_at: metadata?.registered_at as string || new Date().toISOString(),
-      last_update: new Date().toISOString(),
-      ...metadata,
-    },
+    prefix: prefix || `/${name}`,
   };
 
-  const response = await fetch(`${storageUrl}/backends/${name}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-API-Key": apiKey,
-    },
-    body: JSON.stringify(backendData),
-  });
+  const backendMetadata = {
+    registered_at: metadata?.registered_at as string || timestamp,
+    last_update: timestamp,
+    ...metadata,
+  };
+
+  // Verificar si existe
+  let existsResponse;
+  try {
+    existsResponse = await fetch(`${storageUrl}/collections/backend/${name}`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+      },
+    });
+  } catch {
+    existsResponse = { ok: false, status: 404 } as Response;
+  }
+
+  let response;
+
+  // Si existe, actualizar con PUT
+  if (existsResponse.ok) {
+    response = await fetch(`${storageUrl}/collections/backend/${name}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        data: backendData,
+        metadata: backendMetadata,
+      }),
+    });
+  } else {
+    // Si no existe, crear con POST
+    response = await fetch(`${storageUrl}/collections/backend`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        key: name,
+        data: backendData,
+        metadata: backendMetadata,
+      }),
+    });
+  }
 
   if (!response.ok) {
     const text = await response.text();
@@ -153,8 +181,8 @@ async function registerBackend(
 
   console.log(`✅ Backend '${name}' registrado exitosamente`);
   console.log(`   URL: ${url}`);
-  if (prefix) console.log(`   Prefix: ${prefix}`);
-  console.log(`   Timestamp: ${backendData.metadata.last_update}`);
+  console.log(`   Prefix: ${backendData.prefix}`);
+  console.log(`   Timestamp: ${backendMetadata.last_update}`);
 }
 
 // ============================================================================

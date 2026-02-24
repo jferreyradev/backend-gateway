@@ -190,20 +190,19 @@ async function registerBackend(): Promise<boolean> {
         
         const encryptedToken = await encryptToken(CONFIG.backendToken);
         
-        // Formato con metadata separado
-        const kvPayload = {
-            key: CONFIG.name,
-            data: {
-                name: CONFIG.name,
-                url: finalURL,
-                token: encryptedToken,
-                prefix: CONFIG.prefix,
-            },
-            metadata: {
-                registeredAt: timestamp,
-                lastUpdate: timestamp,
-                system: systemInfo,
-            },
+        // Datos del backend
+        const backendData = {
+            name: CONFIG.name,
+            url: finalURL,
+            token: encryptedToken,
+            prefix: CONFIG.prefix,
+        };
+        
+        // Metadata
+        const backendMetadata = {
+            registeredAt: timestamp,
+            lastUpdate: timestamp,
+            system: systemInfo,
         };
         
         if (CONFIG.usePublicIP) {
@@ -234,24 +233,33 @@ async function registerBackend(): Promise<boolean> {
         // Si existe (200), actualizar con PUT
         if (existsResponse.ok) {
             console.log(`   ℹ️  Backend existe, actualizando...`);
+            // PUT solo requiere data y metadata (no key)
             response = await fetch(`${CONFIG.backendsRegistryUrl}/collections/backend/${CONFIG.name}`, {
                 method: 'PUT',
                 headers: { 
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${CONFIG.apiKey}`,
                 },
-                body: JSON.stringify(kvPayload),
+                body: JSON.stringify({
+                    data: backendData,
+                    metadata: backendMetadata,
+                }),
             });
         } else {
             // Si no existe (404), crear con POST
             console.log(`   ℹ️  Backend no existe, creando nuevo...`);
+            // POST requiere key, data y metadata
             response = await fetch(`${CONFIG.backendsRegistryUrl}/collections/backend`, {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${CONFIG.apiKey}`,
                 },
-                body: JSON.stringify(kvPayload),
+                body: JSON.stringify({
+                    key: CONFIG.name,
+                    data: backendData,
+                    metadata: backendMetadata,
+                }),
             });
         }
         
@@ -265,10 +273,10 @@ async function registerBackend(): Promise<boolean> {
         const result = await response.json();
         console.log(`✅ Backend registrado exitosamente`);
         console.log(`\n📋 Detalles:`);
-        console.log(`   Key: ${kvPayload.key}`);
-        console.log(`   Nombre: ${kvPayload.data.name}`);
-        console.log(`   URL: ${kvPayload.data.url}`);
-        console.log(`   Prefix: ${kvPayload.data.prefix}`);
+        console.log(`   Key: ${CONFIG.name}`);
+        console.log(`   Nombre: ${backendData.name}`);
+        console.log(`   URL: ${backendData.url}`);
+        console.log(`   Prefix: ${backendData.prefix}`);
         console.log(`   Registrado: ${timestamp}`);
         
         return true;
