@@ -1,0 +1,36 @@
+{
+  "storageUrl": "https://kv-storage-api.deno.dev",
+  "apiKey": "tu-api-key-secreta",
+  "encryptionKey": "clave-de-32-caracteres-minimo",
+  "backends": [
+    {
+      "name": "usuarios",
+      "url": "https://api-usuarios.com",
+      "token": "token-usuarios-123"
+    },
+    {
+      "name": "productos",
+      "url": "https://api-productos.com",
+      "token": "token-productos-456"
+    },
+    {
+      "name": "pagos",
+      "url": "https://api-pagos.com",
+      "token": "token-pagos-789",
+      "prefix": "/payments"
+    },
+    {
+      "name": "desarrollo-local",
+      "usePublicIP": true,
+      "port": 3000,
+      "token": "dev-token-local",
+      "prefix": "/dev"
+    },
+    {
+      "name": "notificaciones",
+      "url": "https://api-notificaciones.com",
+      "token": "token-notif-abc",
+      "prefix": "/notify"
+    }
+  ]
+}

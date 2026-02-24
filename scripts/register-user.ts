@@ -153,7 +153,7 @@ const args = parseArgs(Deno.args, {
         d: 'delete',
     },
     default: {
-        'registry-url': Deno.env.get('BACKENDS_REGISTRY_URL') || 'https://kv-storage-api.deno.dev',
+        'registry-url': Deno.env.get('STORAGE_URL') || Deno.env.get('KV_STORAGE_URL') || Deno.env.get('BACKENDS_REGISTRY_URL') || 'https://kv-storage-api.deno.dev',
         'api-key': Deno.env.get('API_KEY') || '',
         'roles': 'user',
     },
@@ -178,8 +178,8 @@ Opciones:
   -h, --help         Mostrar esta ayuda
 
 Variables de entorno:
-  BACKENDS_REGISTRY_URL    URL del registry (default)
-  API_KEY                  API Key (default)
+  STORAGE_URL              URL de la API de almacenamiento (cualquier API compatible)
+  API_KEY                  API Key del almacenamiento
 
 Ejemplos:
   # Registrar usuario básico
@@ -214,7 +214,8 @@ const apiKey = args['api-key'];
 
 // Validar configuración
 if (!registryUrl || !apiKey) {
-    console.error('❌ Error: BACKENDS_REGISTRY_URL y API_KEY son requeridos');
+    console.error('❌ Error: STORAGE_URL y API_KEY son requeridos');
+    console.error('   Usa --registry-url y --api-key, o configura las variables de entorno');
     console.error('   Usa --help para ver las opciones\n');
     Deno.exit(1);
 }

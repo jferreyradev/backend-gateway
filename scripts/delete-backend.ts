@@ -5,17 +5,17 @@
  * Elimina un backend del registro de backends
  * 
  * Uso:
- *   deno run -A src/delete-backend.ts --name=Desarrollo
- *   deno run -A src/delete-backend.ts --name=Desarrollo --registry-url=https://kv-storage-api.deno.dev --api-key=tu-api-key
+ *   deno run -A scripts/delete-backend.ts --name=Desarrollo
+ *   deno run -A scripts/delete-backend.ts --name=Desarrollo --registry-url=https://kv-storage-api.deno.dev --api-key=tu-api-key
  * 
  * Argumentos:
  *   --name: Nombre del backend a eliminar (requerido)
- *   --registry-url: URL del servidor de registro de backends (opcional, default: env o https://kv-storage-api.deno.dev)
- *   --api-key: API Key para acceder al registro (opcional, default: env o desarrollo-api-key-2026)
+ *   --registry-url: URL de la API de almacenamiento (opcional, default: env o https://kv-storage-api.deno.dev)
+ *   --api-key: API Key para acceder al almacenamiento (opcional, default: env o desarrollo-api-key-2026)
  * 
  * Variables de entorno:
- *   - BACKENDS_REGISTRY_URL: URL del servidor de registro de backends
- *   - API_KEY: API Key para el registro
+ *   - STORAGE_URL: URL de la API de almacenamiento (cualquier API compatible)
+ *   - API_KEY: API Key para el almacenamiento
  */
 
 function parseArgs(): Record<string, string> {
@@ -33,7 +33,7 @@ const args = parseArgs();
 
 const CONFIG = {
     name: args.name || '',
-    backendsRegistryUrl: args['registry-url'] || Deno.env.get('BACKENDS_REGISTRY_URL') || 'https://kv-storage-api.deno.dev',
+    backendsRegistryUrl: args['registry-url'] || Deno.env.get('STORAGE_URL') || Deno.env.get('KV_STORAGE_URL') || Deno.env.get('BACKENDS_REGISTRY_URL') || 'https://kv-storage-api.deno.dev',
     apiKey: args['api-key'] || Deno.env.get('API_KEY') || 'desarrollo-api-key-2026',
 };
 
@@ -46,7 +46,7 @@ function validateConfig(): void {
     }
     
     if (!CONFIG.backendsRegistryUrl) {
-        errors.push('BACKENDS_REGISTRY_URL es requerido');
+        errors.push('STORAGE_URL es requerido');
     }
     
     if (!CONFIG.apiKey) {
@@ -57,7 +57,7 @@ function validateConfig(): void {
         console.error('❌ Errores de configuración:');
         errors.forEach(err => console.error(`   - ${err}`));
         console.error('\nUso:');
-        console.error('  deno run -A src/delete-backend.ts --name=Desarrollo');
+        console.error('  deno run -A scripts/delete-backend.ts --name=Desarrollo');
         console.error('\nArgumentos disponibles:');
         console.error('  --name: Nombre del backend a eliminar (requerido)');
         console.error('  --registry-url: URL del servidor de registro (opcional)');

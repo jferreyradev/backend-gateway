@@ -6,13 +6,13 @@ Abre una terminal PowerShell y ejecuta:
 
 ```powershell
 # Configurar variables de entorno
-$env:BACKENDS_REGISTRY_URL="https://kv-storage-api.deno.dev"
+$env:STORAGE_URL="https://kv-storage-api.deno.dev"
 $env:API_KEY="pi3_141516"
 $env:GATEWAY_USERNAME="admin"
 $env:GATEWAY_PASSWORD="admin123"
 
 # Iniciar el gateway
-deno serve --allow-net --allow-env src/gateway-server.ts
+deno serve --allow-net --allow-env src/simple-gateway.ts
 ```
 
 Deberías ver: `deno serve: Listening on http://localhost:8000/`
@@ -23,17 +23,22 @@ Deberías ver: `deno serve: Listening on http://localhost:8000/`
 
 Abre **OTRA** terminal PowerShell nueva y ejecuta:
 
-### Opción A: Test Simple (Recomendado)
-```powershell
-deno run -A scripts/test-simple.ts
-```
-
-### Opción B: Test Completo (13 pruebas)
+### Opción A: Test Completo
 ```powershell
 deno run -A scripts/test-general.ts
 ```
 
-### Opción C: Test Manual con curl
+### Opción B: Test de Autenticación
+```powershell
+deno run -A scripts/test-auth.ts
+```
+
+### Opción C: Test del Gateway
+```powershell
+deno run -A scripts/test-gateway.ts
+```
+
+### Opción D: Test Manual con curl
 
 ```powershell
 # 1. Health check (público)

@@ -5,7 +5,7 @@
  * Registra un backend en el servidor de registro de backends
  * 
  * Uso:
- *   deno run -A src/register-backend.ts \
+ *   deno run -A scripts/register-backend.ts \
  *     --name=prod \
  *     --backend-url=http://10.6.46.114:3013 \
  *     --backend-token=secret \
@@ -31,8 +31,8 @@
  *   - BACKEND_URL: URL del backend
  *   - BACKEND_TOKEN: Token de autenticación
  *   - BACKEND_PREFIX: Prefijo de ruta
- *   - BACKENDS_REGISTRY_URL: URL del servidor de registro de backends
- *   - API_KEY: API Key para el registro
+ *   - STORAGE_URL: URL de la API de almacenamiento (cualquier API compatible)
+ *   - API_KEY: API Key para el almacenamiento
  *   - PORT: Puerto local
  *   - ENCRYPTION_KEY: Clave para encriptar tokens
  */
@@ -55,7 +55,7 @@ const CONFIG = {
     backendUrl: args['backend-url'] || Deno.env.get('BACKEND_URL') || '',
     backendToken: args['backend-token'] || Deno.env.get('BACKEND_TOKEN') || '',
     prefix: args.prefix || Deno.env.get('BACKEND_PREFIX') || '',
-    backendsRegistryUrl: args['registry-url'] || Deno.env.get('BACKENDS_REGISTRY_URL') || '',
+    backendsRegistryUrl: args['registry-url'] || Deno.env.get('STORAGE_URL') || Deno.env.get('KV_STORAGE_URL') || Deno.env.get('BACKENDS_REGISTRY_URL') || '',
     apiKey: args['api-key'] || Deno.env.get('API_KEY') || '',
     usePublicIP: Deno.args.includes('--use-public-ip'),
     backendPort: args['backend-port'] || Deno.env.get('PORT') || '',
